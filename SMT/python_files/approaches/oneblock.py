@@ -118,7 +118,7 @@ else:
 import os
 
 # Example directory path
-directory = "smt-lib_files/oneblock_approach"
+directory = "SMT/smt-lib_files/oneblock_approach"
 
 with open(os.path.join(directory, f"oneblock_{n}.smt2"), "w") as f:
     f.write("(set-logic QF_LIA)\n")

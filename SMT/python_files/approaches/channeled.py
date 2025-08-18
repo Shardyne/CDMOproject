@@ -133,7 +133,7 @@ for w in range(W - 1):
 import os
 
 # Example directory path
-directory = "smt-lib_files/channeled_approach"
+directory = "SMT/smt-lib_files/channeled_approach"
 
 with open(os.path.join(directory, f"channeled_{N}.smt2"), "w") as f:
     f.write("(set-logic QF_LIA)\n")
