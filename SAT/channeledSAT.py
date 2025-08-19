@@ -135,7 +135,7 @@ def solve_sts_matchSAT(N, write_json=True):
 
     elif res == unsat:
         # decision solved: UNSAT
-        write_json(out_path, approach, 0, True, None, [])
+        write_json(out_path, approach, total_elapsed, True, None, [])
         return None
 
     else:  # unknown (likely timeout)

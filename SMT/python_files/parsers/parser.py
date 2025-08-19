@@ -217,7 +217,7 @@ def main():
             existing = {}
 
         # Update with placeholder entry
-        existing[approach] = {"time": 0, "optimal": True, "obj": None, "sol": []}
+        existing[approach] = {"time": int(elapsed), "optimal": True, "obj": None, "sol": []}
 
         # Write back
         with open(outpath, "w") as f:
