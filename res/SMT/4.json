@@ -1,6 +1,1 @@
-{"z3_channeled_4": {"time": 0, "optimal": true, "obj": null, "sol": []}, 
-"cvc5_channeled_4": {"time": 0, "optimal": true, "obj": null, "sol": []}, 
-"z3_oneblock_4": {"time": 0, "optimal": true, "obj": null, "sol": []}, 
-"cvc5_oneblock_4": {"time": 0, "optimal": true, "obj": null, "sol": []}, 
-"z3_not_channeled_4": {"time": 0, "optimal": true, "obj": null, "sol": []}, 
-"cvc5_not_channeled_4": {"time": 0, "optimal": true, "obj": null, "sol": []}}
+{"z3_offline_4":{"time":0,"optimal":true,"obj":null,"sol":[]}}

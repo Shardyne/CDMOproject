@@ -1,0 +1,3 @@
+(define-fun Opp ((t Int) (w Int)) Int
+  (ite (= t 1) (ite (= w 1) 6 (ite (= w 2) 5 (ite (= w 3) 4 (ite (= w 4) 3 (ite (= w 5) 2 0))))) (ite (= t 2) (ite (= w 1) 5 (ite (= w 2) 3 (ite (= w 3) 6 (ite (= w 4) 4 (ite (= w 5) 1 0))))) (ite (= t 3) (ite (= w 1) 4 (ite (= w 2) 2 (ite (= w 3) 5 (ite (= w 4) 1 (ite (= w 5) 6 0))))) (ite (= t 4) (ite (= w 1) 3 (ite (= w 2) 6 (ite (= w 3) 1 (ite (= w 4) 2 (ite (= w 5) 5 0))))) (ite (= t 5) (ite (= w 1) 2 (ite (= w 2) 1 (ite (= w 3) 3 (ite (= w 4) 6 (ite (= w 5) 4 0))))) (ite (= t 6) (ite (= w 1) 1 (ite (= w 2) 4 (ite (= w 3) 2 (ite (= w 4) 5 (ite (= w 5) 3 0))))) 0))))))
+)

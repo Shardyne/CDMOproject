@@ -1,15 +1,14 @@
 from z3 import *
 import numpy as np
 import time, json
-from SMT.python_files.parsers.utils import *  # expects build_solution_from_model, make_result_json
+from utils import *  # expects build_solution_from_model, make_result_json
 
 # ---------- Parameters ----------
-N = 18
+N = 16
 W = N - 1
 P = N // 2
 
 # ---------- Variables ----------
-# Period chosen by each team each week: 1..P
 Per  = [[Int(f"Per_{t}_{w}")  for w in range(W)] for t in range(N)]
 # Home flag for each team and week: 0/1
 Home = [[Int(f"Home_{t}_{w}") for w in range(W)] for t in range(N)]
@@ -90,53 +89,54 @@ for w in range(W - 1):
     s.add(Per[0][w] <= Per[0][w + 1])
 
 # ---------- Solve ----------
-#start = time.time()
-#res = s.check()
-#elapsed = time.time() - start
-#
-#if res == sat:
-#    m = s.model()
-#
-#    # Evaluate homes to compute the objective (sum |home-away|)
-#    count_home = [
-#        sum(1 for w in range(W) if m.evaluate(Home[t][w]).as_long() == 1)
-#        for t in range(N)
-#    ]
-#    obj_val = int(sum(abs(2 * np.array(count_home) - W)))  # optimal should be N for odd W
-#
-#    # Build solution matrix using your helper
-#    # (Opp is consistent with Per, so build_solution_from_model can rely on either)
-#    sol = build_solution_from_model(m, Opp, Home, Per, N, W, P)
-#
-#    res_json = make_result_json(
-#        sol,
-#        "z3_sat",               # approach name
-#        int(elapsed),                      # floor as per spec
-#        optimal=True,                      # decision version solved; and optimal balance enforced
-#        obj_val=obj_val
-#    )
-#    
-#
-#    print(f"SAT in {elapsed:.2f}s, obj={obj_val}")
-#else:
-#    # unknown (timeout) or unsat
-#    print(res)
-#    res_json = make_result_json(
-#        [],
-#        "z3_sat",               # approach name
-#        int(elapsed),                      # floor as per spec
-#        optimal=True,                      # decision version solved; and optimal balance enforced
-#        obj_val=None
-#    )
+start = time.time()
+res = s.check()
+elapsed = time.time() - start
+
+if res == sat:
+    m = s.model()
+
+    # Evaluate homes to compute the objective (sum |home-away|)
+    count_home = [
+        sum(1 for w in range(W) if m.evaluate(Home[t][w]).as_long() == 1)
+        for t in range(N)
+    ]
+    obj_val = int(sum(abs(2 * np.array(count_home) - W)))  # optimal should be N for odd W
+
+    # Build solution matrix using your helper
+    # (Opp is consistent with Per, so build_solution_from_model can rely on either)
+    sol = build_solution_from_model(m, Opp, Home, Per, N, W, P)
+
+    res_json = make_result_json(
+        sol,
+        "z3_sat",               # approach name
+        int(elapsed),                      # floor as per spec
+        optimal=True,                      # decision version solved; and optimal balance enforced
+        obj_val=obj_val
+    )
+    
+
+    print(f"SAT in {elapsed:.2f}s, obj={obj_val}")
+else:
+    # unknown (timeout) or unsat
+    print(res)
+    res_json = make_result_json(
+        [],
+        "z3_sat",               # approach name
+        int(elapsed),                      # floor as per spec
+        optimal=True,                      # decision version solved; and optimal balance enforced
+        obj_val=None
+    )
+print(res_json)
 # Write SMT-LIB2 file
 # --- Save JSON
-import os
-
-# Example directory path
-directory = "SMT/smt-lib_files/channeled_approach"
-
-with open(os.path.join(directory, f"channeled_{N}.smt2"), "w") as f:
-    f.write("(set-logic QF_LIA)\n")
-    f.write("(set-option :produce-models true)\n")
-    f.write(s.to_smt2())
-    f.write("(get-model)\n")
+#import os
+#
+## Example directory path
+#directory = "SMT/smt-lib_files/channeled_approach"
+#
+#with open(os.path.join(directory, f"channeled_{N}.smt2"), "w") as f:
+#    f.write("(set-logic QF_LIA)\n")
+#    f.write("(set-option :produce-models true)\n")
+#    f.write(s.to_smt2())
+#    f.write("(get-model)\n")
