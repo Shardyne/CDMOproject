@@ -1,5 +1,5 @@
 #!/bin/bash
-
+    
 # Usage: ./run_minizinc.sh <model.mzn> [n] <solver>
 
 if [ $# -lt 2 ]; then
