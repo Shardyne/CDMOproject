@@ -19,7 +19,7 @@
 ## Adding the optional optimization task 'constraint_v..._model' &rarr; 'optimization_v1_model'
 
 ## TODO:
-- [ ] Create a time benchmarking system
-- [ ] Format correctly .json files results
+- [X] Create a time benchmarking system
+- [~] Format correctly .json files results
 
 

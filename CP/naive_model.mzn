@@ -40,9 +40,9 @@ solve satisfy;
 
 % --- Output 
 output [
-  if w = 1 then "\nWeek " ++ show(w) else
-  if p = 1 then "\nWeek " ++ show(w) else "" endif endif ++
-  " Period " ++ show(p) ++ ": " ++
-  show(home_team[p,w]) ++ " vs " ++ show(away_team[p,w])
-  | w in 1..weeks, p in 1..periods
+  join(", ",
+         [ "[" ++ join(", ",
+                       [ "[" ++ show(home_team[p,w]) ++ ", " ++ show(away_team[p,w]) ++ "]"
+                       | p in 1..periods]) ++ "]"
+         | w in 1..weeks])
 ];
