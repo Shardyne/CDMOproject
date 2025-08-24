@@ -7,3 +7,5 @@ docker run --rm -it \
   -v $(pwd)/res:/CDMO/res \
   sts_container \
   /bin/bash
+
+python mip.2.py --n 6 --approach balance --timeout 100  

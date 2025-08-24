@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 Sports Tournament Scheduling (STS) — MILP with PuLP (CBC)
-- Decision version ("feasibility"): satisfy constraints without objective.
 - Optimization version ("balance"): minimize the total home/away imbalance.
 
 Constraints (for even n):
@@ -152,7 +151,7 @@ def build_model(n: int, approach: str, time_limit: int = 300, seed: int = 42):
 
 def main():
     n = 10
-    res_dir = os.path.join(os.path.dirname(__file__), "..", "res", "MIP")
+    res_dir = os.path.join(os.path.dirname(__file__), "..", "..", "res", "MIP")
     os.makedirs(res_dir, exist_ok=True)
     out_path = os.path.join(res_dir, f"prova_{n}.json")
     # Misura tempo complessivo (incluso eventuale 'pre-solving' – qui nullo)
