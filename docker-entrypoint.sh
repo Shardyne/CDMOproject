@@ -25,13 +25,13 @@ usage() {
   cat <<EOF
 Usage:
   (1) No args: run all solvers with default n=${DEFAULT_N} and save to res/test/
-      docker run --rm -v /path/to/project/res:/CDMO/res -v /path/to/project/source:/CDMO/source IMAGE
+      docker run --rm -v $(pwd)/res:/CDMO/res -v $(pwd)/source:/CDMO/source IMAGE_NAME
 
-  (2) Positional: docker run IMAGE MODEL [VERSION] [N] [TIME] [SEED] [OUT]
+  (2) Positional: docker run IMAGE_NAME MODEL [VERSION] [N] [TIME] [SEED] [OUT]
       Example:
-      docker run --rm -v $(pwd)/res:/CDMO/res -v $(pwd)/source:/CDMO/source IMAGE MIP v1 8 300 n res/person_test/MIP_8.json
+      docker run --rm -v $(pwd)/res:/CDMO/res -v $(pwd)/source:/CDMO/source IMAGE_NAME MIP v1 8 300 n res/person_test/MIP_8.json
 
-  (3) Flags: docker run IMAGE -- --model MIP --version v1 --n 8 --time 300 --seed n --out res/person_test/MIP_8.json
+  (3) Flags: docker run IMAGE_NAME -- --model MIP --version v1 --n 8 --time 300 --seed n --out res/person_test/MIP_8.json
 
 Note: mount your host 'source/' to /CDMO/source and 'res/' to /CDMO/res when running.
 EOF
