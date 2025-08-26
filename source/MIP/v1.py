@@ -130,7 +130,7 @@ def build_model(n: int, time_limit: int = 300, seed: int = 42):
     return result, meta
 
 def main():
-    n = 14
+    n = 12
     res_dir = os.path.join(os.path.dirname(__file__), "..", "..", "res", "MIP")
     os.makedirs(res_dir, exist_ok=True)
     out_path = os.path.join(res_dir, f"prova_{n}.json")
