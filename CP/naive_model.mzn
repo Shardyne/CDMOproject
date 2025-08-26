@@ -1,8 +1,11 @@
 include "globals.mzn";
+array[int] of tuple(int,int): matches; % dummy, just for compatibility with preprocessing tool
+
+
 % --- Parameters
 int: n; % number of teams (must be even)
 set of int: TEAMS = 1..n;
-int: weeks = n - 1;
+int: weeks = n-1;
 int: periods = n div 2;
 
 % --- Decision variables 
@@ -17,7 +20,7 @@ constraint
         home_team[p,w] != away_team[p,w]
     )
     /\
-    % 2. Each team plays exactly once per week
+    % 2. Each team plays once per week
     forall(w in 1..weeks) (
         alldifferent([home_team[p,w] | p in 1..periods] ++
                      [away_team[p,w] | p in 1..periods])
@@ -40,9 +43,14 @@ solve satisfy;
 
 % --- Output 
 output [
-  join(", ",
-         [ "[" ++ join(", ",
-                       [ "[" ++ show(home_team[p,w]) ++ ", " ++ show(away_team[p,w]) ++ "]"
-                       | p in 1..periods]) ++ "]"
-         | w in 1..weeks])
+  "{",
+  "\"optimal\":false,",
+  "\"obj\":", show(n), ",",
+  "\"sol\":[",
+    join(",",
+         [ "[" ++ join(",",
+                       [ "[" ++ show(home_team[p,w]) ++ "," ++ show(away_team[p,w]) ++ "]"
+                       | w in 1..weeks]) ++ "]"
+         | p in 1..periods]),
+  "]}"
 ];
