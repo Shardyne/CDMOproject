@@ -40,7 +40,9 @@ constraint
     ;
 
 
-var int: objective_function = abs( sum([ matches[ calendar[p,w] ,home_team_index[p,w]] == 1 | p in 1..periods, w in 1..weeks ]) - (weeks div 2) );
+int: exp_base = 5;
+int: away_games_target = ((weeks div 2) * sum([pow(exp_base, t) | t in TEAMS]));
+var int: objective_function = abs( sum([ pow(exp_base, matches[ calendar[p,w] ,home_team_index[p,w]]) | p in 1..periods, w in 1..weeks ]) - away_games_target );
 % --- Solve optimizing balance between home and away matches for each team
 solve minimize objective_function;
 
