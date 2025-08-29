@@ -36,8 +36,7 @@ constraint
     ;
 
 % --- Solve
-solve :: int_search(calendar, first_fail, indomain_min)
-      satisfy;
+solve satisfy;
 
 % --- Output 
 output [
