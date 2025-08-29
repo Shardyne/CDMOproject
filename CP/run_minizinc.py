@@ -3,10 +3,24 @@ import sys
 import json
 from pathlib import Path
 
-UNKNOWN_SOLUTION_DEFAULT_MESSAGE = "=====UNKNOWN====="
-UNSATISFIABLE_SOLUTION_DEFAULT_MESSAGE = "=====UNSATISFIABLE====="
+UNKNOWN_SOLUTION_DEFAULT_MESSAGE = "UNKNOWN====="
+UNSATISFIABLE_SOLUTION_DEFAULT_MESSAGE = "UNSATISFIABLE====="
 
 INPUT_DATA_FILENAME = "preprocessed_data" + ".dzn"
+
+def extract_between(text: str, substring: str) :
+    # Find where the substring starts
+    start_index = text.find(substring)
+    if start_index == -1:
+        return ""  # substring not found
+    # Move to the end of the substring
+    start_index += len(substring)
+    # Find the next newline character
+    end_index = text.find("\n", start_index)
+    if end_index == -1:  
+        # If no newline found, take until end of text
+        return text[start_index:].strip()
+    return text[start_index:end_index].strip()
 
 def write_triangular_dzn(n: int):
     if n % 2 != 0:
@@ -16,7 +30,7 @@ def write_triangular_dzn(n: int):
     coords = [(i+1, j+1) for i in range(n) for j in range(i+1, n)]
 
     # Format as MiniZinc array of tuples
-    dzn_content = "matches=[" + ",".join(f"({r},{c})" for r, c in coords) + f"];\nn={n};"
+    dzn_content = "matches=[|" + "|".join(f"{r},{c}" for r, c in coords) + f"|];\nn={n};"
 
     # Write to file
     with open(INPUT_DATA_FILENAME, "w") as f:
@@ -26,6 +40,7 @@ def write_triangular_dzn(n: int):
 
 
 def run_minizinc(model, solver):
+    raw_output = None
     try:
         # Run minizinc and capture stdout
         result = subprocess.run(
@@ -35,6 +50,7 @@ def run_minizinc(model, solver):
                 "--data", f"{INPUT_DATA_FILENAME}",
                 "--solver", solver,
                 "--statistics",
+                #"-p", "8" ,
                 model
             ],
             stdout=subprocess.PIPE,
@@ -45,15 +61,13 @@ def run_minizinc(model, solver):
 
         # If output is JSON, parse it
         raw_output = result.stdout
-        tot_n_sol_found = len(raw_output.split("----------"))//2
-        solution = raw_output.split("----------")[0] # split each solution with default minizinc notation
-        solution_time_elapsed = float(raw_output.split("----------")[1].split("%%%")[2].split("=")[1])
-        solution_content = solution.split("%%%")[9:][0].split("\n")[1]
-        print(f"MiniZinc found {tot_n_sol_found} solutions")
+        solution_time_elapsed = int(float(extract_between(raw_output, "solveTime=")))
+        solution_content = "{" + extract_between(raw_output, "{")
+        unsat_solution_content = extract_between(raw_output, "=====")
         try:
-            if solution_content == UNSATISFIABLE_SOLUTION_DEFAULT_MESSAGE:
+            if unsat_solution_content == UNSATISFIABLE_SOLUTION_DEFAULT_MESSAGE:
                 print("The solution found is UNSATISFIABLE")
-            elif solution_content == UNKNOWN_SOLUTION_DEFAULT_MESSAGE:
+            elif unsat_solution_content == UNKNOWN_SOLUTION_DEFAULT_MESSAGE:
                 print("The solution HASN'T been found (UNKNOWN)")
             json_solution = json.loads(solution_content)
             json_solution["time"] = solution_time_elapsed
@@ -64,6 +78,11 @@ def run_minizinc(model, solver):
 
     except subprocess.CalledProcessError as e:
         print(f"[ERROR] - MiniZinc execution failed:\n{e.stderr}")
+        return None
+    except Exception as e:
+        print(e)
+        if raw_output:
+            print("\n RAW OUTPUT:", raw_output)
         return None
 
 
