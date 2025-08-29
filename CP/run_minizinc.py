@@ -50,6 +50,7 @@ def run_minizinc(model, solver):
                 "--data", f"{INPUT_DATA_FILENAME}",
                 "--solver", solver,
                 "--statistics",
+                "--seed", "1234",
                 #"-p", "8" ,
                 model
             ],
