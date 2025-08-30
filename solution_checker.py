@@ -87,6 +87,17 @@ def check_solution(solution: list, obj, time, optimal):
     return 'Valid solution' if len(errors) == 0 else errors
 
 
+def generate_report(solution, teams):
+    report = {team: {"home": 0, "away": 0} for team in teams}
+    for period in solution:
+        for match in period:
+            if len(match) == 2:
+                home, away = match
+                report[home]["home"] += 1
+                report[away]["away"] += 1
+    return report
+
+
 def load_json(path):
     try:
         with open(path, 'r') as f:
@@ -100,9 +111,15 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="Check the validity of a STS solution JSON file.")
     parser.add_argument("json_file_directory", help="Path to the directory containing .json solution files")
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Show a more detailed report"
+    )
     args = parser.parse_args()
 
     directory = args.json_file_directory
+    verbose_report = args.verbose
 
     for f in filter(lambda x: x.endswith('.json'), os.listdir(directory)):
         json_data = load_json(f'{directory}/{f}')
@@ -116,5 +133,11 @@ if __name__ == '__main__':
 
             message = check_solution(sol, obj, time, opt)
             status = "VALID" if type(message) == str else "INVALID"
+            _, _, teams = get_elements(sol)
+            if status == "VALID" and verbose_report:
+                report = generate_report(sol, set(teams))
+                print("    Team match report:")
+                for team, counts in report.items():
+                    print(f"      Team {team}: {counts['home']} home, {counts['away']} away")
             message_str = '\n\t  '.join(message)
-            print(f"  Approach: {approach}\n    Status: {status}\n    Reason: {message if status == 'VALID' else message_str}\n")
+            print(f"  Approach: {approach}\n   Status: {status}\n   Optimized: {opt}\n    Reason: {message if status == 'VALID' else message_str}\n")

@@ -15,7 +15,9 @@ array[1..periods, 1..weeks] of var 1..2: home_team_index;
 
 % --- Constraints
 constraint 
-    home_team_index[1,1] == 1;
+    home_team_index[1,1] == 1
+    
+    ;
 
 
 int: exp_base = 5;

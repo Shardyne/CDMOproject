@@ -6,8 +6,8 @@ from pathlib import Path
 UNKNOWN_SOLUTION_DEFAULT_MESSAGE = "UNKNOWN====="
 UNSATISFIABLE_SOLUTION_DEFAULT_MESSAGE = "UNSATISFIABLE====="
 
-INPUT_DATA_FILENAME = "preprocessed_data" + ".dzn"
-PARTIAL_OUTPUT_FILENAME = "partial_output" + ".json"
+INPUT_DATA_FILENAME = "./_cache_/preprocessed_data" + ".dzn"
+PARTIAL_OUTPUT_FILENAME = "./_cache_/partial_output" + ".json"
 
 BASELINE_TIMEOUT = 300_000
 
@@ -35,6 +35,8 @@ def write_triangular_dzn(n: int):
     # Format as MiniZinc array of tuples
     dzn_content = "matches=[|" + "|".join(f"{r},{c}" for r, c in coords) + f"|];\nn={n};"
 
+    # Ensure parent directory exists
+    Path(INPUT_DATA_FILENAME).parent.mkdir(parents=True, exist_ok=True)
     # Write to file
     with open(INPUT_DATA_FILENAME, "w") as f:
         f.write(dzn_content)
@@ -90,11 +92,12 @@ def run_minizinc(model, solver, input_data_filename = INPUT_DATA_FILENAME, timeo
     
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: python run_minizinc.py <model.mzn> [n] <solver>")
+    if len(sys.argv) < 4:
+        print("Usage: python run_minizinc.py <model.mzn> <n> <solver> <optional HAP_model.mzn>")
         sys.exit(1)
 
     model, n, solver = sys.argv[1], sys.argv[2], sys.argv[3]
+    optional_hap_model = sys.argv[4] if len(sys.argv) > 4 else None
     output_path = Path(f"../res/CP/{n}.json")
     partial_output_path = Path(f"./{PARTIAL_OUTPUT_FILENAME}")
     write_triangular_dzn(int(n))
@@ -104,19 +107,30 @@ if __name__ == "__main__":
     if result1:
         print("Partial result:", result1)
 
-    partial_result = "{" + f"\"sol\":{result1[solver]["sol"]},\n\"n\":{n}" + "}"
+    partial_result = "{" + f"\"sol\":{result1[solver]['sol']},\n\"n\":{n}" + "}"
     partial_timer = result1[solver]["time"]
 
-    partial_output_path.write_text(partial_result)
+    if optional_hap_model: # if an HAP optimization model was provided, continue the pipeline
+        partial_output_path.write_text(partial_result)
     
-    result2 = run_minizinc("HAP_v1_model.mzn", solver, PARTIAL_OUTPUT_FILENAME, timeout=BASELINE_TIMEOUT-100-(partial_timer*1000))
+        result2 = run_minizinc("HAP_v1_model.mzn", solver, PARTIAL_OUTPUT_FILENAME, timeout=BASELINE_TIMEOUT-10-(partial_timer*1000))
 
-    result2[solver]["time"] = result2[solver]["time"] + partial_timer
+        result2[solver]["time"] = result2[solver]["time"] + partial_timer
 
-    output_path.write_text(json.dumps(result2))
+        if output_path.exists():
+            existing_data = json.loads(output_path.read_text())
+        else:
+            existing_data = {}
+        existing_data.update(result2)
+        output_path.write_text(json.dumps(existing_data))
 
-    print(f"[OK] - Results written to {output_path}")
-
-    # Example: access parsed results during execution
-    if result2:
         print("Accessible result:", result2)
+    else:
+        if output_path.exists():
+            existing_data = json.loads(output_path.read_text())
+        else:
+            existing_data = {}
+        existing_data.update(result1)
+        output_path.write_text(json.dumps(existing_data))
+
+    print(f"\n[OK] - Results written to {output_path}")
