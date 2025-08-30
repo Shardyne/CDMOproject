@@ -7,6 +7,9 @@ UNKNOWN_SOLUTION_DEFAULT_MESSAGE = "UNKNOWN====="
 UNSATISFIABLE_SOLUTION_DEFAULT_MESSAGE = "UNSATISFIABLE====="
 
 INPUT_DATA_FILENAME = "preprocessed_data" + ".dzn"
+PARTIAL_OUTPUT_FILENAME = "partial_output" + ".json"
+
+BASELINE_TIMEOUT = 300_000
 
 def extract_between(text: str, substring: str) :
     # Find where the substring starts
@@ -39,19 +42,18 @@ def write_triangular_dzn(n: int):
     print(f"File '{INPUT_DATA_FILENAME}' written with {len(coords)} tuples.")
 
 
-def run_minizinc(model, solver):
+def run_minizinc(model, solver, input_data_filename = INPUT_DATA_FILENAME, timeout = BASELINE_TIMEOUT):
     raw_output = None
     try:
         # Run minizinc and capture stdout
         result = subprocess.run(
             [
                 "minizinc",
-                "--time-limit", "300000",
-                "--data", f"{INPUT_DATA_FILENAME}",
+                "--time-limit", str(timeout),
+                "--data", f"{input_data_filename}",
                 "--solver", solver,
                 "--statistics",
                 "--seed", "1234",
-                #"-p", "8" ,
                 model
             ],
             stdout=subprocess.PIPE,
@@ -85,7 +87,7 @@ def run_minizinc(model, solver):
         if raw_output:
             print("\n RAW OUTPUT:", raw_output)
         return None
-
+    
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
@@ -94,13 +96,27 @@ if __name__ == "__main__":
 
     model, n, solver = sys.argv[1], sys.argv[2], sys.argv[3]
     output_path = Path(f"../res/CP/{n}.json")
+    partial_output_path = Path(f"./{PARTIAL_OUTPUT_FILENAME}")
     write_triangular_dzn(int(n))
-    result = run_minizinc(model, solver)
 
-    output_path.write_text(json.dumps(result))
+    result1 = run_minizinc(model, solver)
+
+    if result1:
+        print("Partial result:", result1)
+
+    partial_result = "{" + f"\"sol\":{result1[solver]["sol"]},\n\"n\":{n}" + "}"
+    partial_timer = result1[solver]["time"]
+
+    partial_output_path.write_text(partial_result)
+    
+    result2 = run_minizinc("HAP_v1_model.mzn", solver, PARTIAL_OUTPUT_FILENAME, timeout=BASELINE_TIMEOUT-100-(partial_timer*1000))
+
+    result2[solver]["time"] = result2[solver]["time"] + partial_timer
+
+    output_path.write_text(json.dumps(result2))
 
     print(f"[OK] - Results written to {output_path}")
 
     # Example: access parsed results during execution
-    if result:
-        print("Accessible result:", result)
+    if result2:
+        print("Accessible result:", result2)
