@@ -32,8 +32,17 @@ def write_triangular_dzn(n: int):
     # Collect non-zero indices (upper triangular, excluding diagonal)
     coords = [(i+1, j+1) for i in range(n) for j in range(i+1, n)]
 
+    one_week = []
+    other_matches = []
+
+    for r, c in coords:
+        if c + r == n+1: #if a couple of indices are on the anti-diagonal of the matrix (when indices start from 1)
+            one_week.append((r,c))
+        else:
+            other_matches.append((r,c))
+
     # Format as MiniZinc array of tuples
-    dzn_content = "matches=[|" + "|".join(f"{r},{c}" for r, c in coords) + f"|];\nn={n};"
+    dzn_content = "matches=[|" + "|".join(f"{r},{c}" for r, c in one_week + other_matches) + f"|];\nn={n};"
 
     # Ensure parent directory exists
     Path(INPUT_DATA_FILENAME).parent.mkdir(parents=True, exist_ok=True)
