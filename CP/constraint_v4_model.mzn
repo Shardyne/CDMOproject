@@ -15,10 +15,13 @@ array[1..periods, 1..weeks] of var MATCHES: calendar;
 
 % --- Constraints
 constraint 
-    matches[ calendar[1,1], 1 ] == 1 /\ matches[ calendar[1,1], 2 ] == 2
+    exists(w in 1..weeks)(
+        forall(p in 1..periods)(
+            calendar[p,w] = p
+        )
+    )
     /\
-    lex_chain(calendar)
-    /\
+    
     % 1. Each team plays once per week
     forall(w in 1..weeks)(
         alldifferent([ matches[ calendar[p,w] ,1] | p in 1..periods]++[ matches[ calendar[p,w] ,2] | p in 1..periods])

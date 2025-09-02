@@ -10,16 +10,19 @@ set of int: TEAMS = 1..n;
 
 % --- Decision Variables
 array[1..periods, 2..weeks] of var periods+1..max_m: calendar; 
-array[1..periods] of var 1..periods: first_week;
+array[1..periods] of 1..periods: first_week = [p | p in 1..periods];
 
 constraint forall(p in 1..periods) (
-    first_week[p] >= p /\ first_week[p] <= p+1
+    first_week[p] == p
 );
 
 % --- Constraints
 constraint
     calendar[1,2] == periods+1
-    
+    /\
+    forall(w in 2..weeks-1)(
+        lex_lesseq([calendar[p,w] | p in 1..periods], [calendar[p,w+1] | p in 1..periods])
+    )
     /\
     % 1. Each team plays once per week
     forall(w in 2..weeks)(
@@ -37,7 +40,7 @@ constraint
     ;
 
 % --- Solve
-solve :: int_search(first_week, first_fail, indomain_min, complete) satisfy;
+solve satisfy;
 
 % --- Output 
 output [
