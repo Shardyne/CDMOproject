@@ -10,11 +10,12 @@ def main():
     ap.add_argument("--approach", choices=["channeled", "offline"], help="approach to use")
     ap.add_argument("--timeout", type=int, default=300, help="Timeout seconds")
     ap.add_argument("--N", type=int, required=False, help="Teams (even). If omitted, inferred.")
-    ap.add_argument("--outdir", default="res/SMT", help="Output directory")
+    ap.add_argument("--outdir", default="res/SMT1", help="Output directory")
     args = ap.parse_args()
 
     # variable and name which will be used later and for the name
     N = args.N
+    total_time=0
     approach = f'{args.solver}_{args.approach}'
 
     # define the channele approach
@@ -33,11 +34,12 @@ def main():
         os.remove(tmp_path)
 
         status=get_status(stdout)
-        print(status)
         if status=='timeout' or (status in ('unknown', 'unsat') ):
             solved = 0
         else:
             solved = 1
+        
+        total_time += elapsed
 
         if solved != 0:
             assigns = parse_model(stdout)
@@ -45,7 +47,6 @@ def main():
             Home = read_grid(assigns, "Home", T, W, default=False)
             counts = [sum(1 if as_bool(Home[t][w]) else 0 for w in range(W)) for t in range(T)]
             obj = int(sum(abs(2 * c - W) for c in counts))
-            total_time = elapsed
             print(counts)
         else:
             # handle timeout/unsat
@@ -67,6 +68,8 @@ def main():
 
                 os.remove(f.name)
             total_time += elapsed2
+
+            
             
 
             assigns = parse_model(stdout)
@@ -150,7 +153,7 @@ def main():
             try:
                 with open(outpath, "r") as f: existing = json.load(f)
             except Exception: pass
-        existing[approach] = {"time": args.timeout, "optimal": False, "obj": None, "sol": []}
+        existing[approach] = {"time": total_time, "optimal": False, "obj": None, "sol": []}
         with open(outpath, "w") as f: json.dump(existing, f)
         print(f"[TIMEOUT] merged placeholder into {outpath}")
         return
@@ -164,7 +167,7 @@ def main():
             try:
                 with open(outpath, "r") as f: existing = json.load(f)
             except Exception: pass
-        existing[approach] = {"time": int(elapsed), "optimal": True, "obj": None, "sol": []}
+        existing[approach] = {"time": int(total_time), "optimal": True, "obj": None, "sol": []}
         with open(outpath, "w") as f: json.dump(existing, f)
         print(f"[UNSAT] merged placeholder into {outpath}")
         return
