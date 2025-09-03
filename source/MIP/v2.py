@@ -16,6 +16,8 @@ non-isomorfe). Sono comunque euristiche: rompere ulteriori simmetrie può richie
 vincoli più complessi (lessicografici) o tecniche avanzate.
 """
 import argparse, json, math, os, sys, time
+import random
+from collections import defaultdict
 
 try:
     import pulp
@@ -24,7 +26,20 @@ except Exception as e:
     sys.exit(1)
 
 
-def build_model(n: int, time_limit: int = 300, seed: int = 42):
+def compute_circle_pairs(n: int):
+    """Simple canonical pairing for week 1 (one-factorization style).
+    For even n, returns n/2 disjoint pairs: (1,n), (2,n-1), (3,n-2), ...
+    This is a standard, sparse, safe choice for fixing week1 composition.
+    """
+    pairs = []
+    for i in range(1, n//2 + 1):
+        pairs.append((i, n + 1 - i))
+    return pairs
+
+def build_model(n: int, time_limit: int = 300, seed: int = 0):
+
+    random.seed(seed)
+
     assert n % 2 == 0 and n >= 2
     W = list(range(1, n))                  # weeks: 1..n-1
     P = list(range(1, n//2 + 1))           # periods: 1..n/2
@@ -75,43 +90,51 @@ def build_model(n: int, time_limit: int = 300, seed: int = 42):
     # Symmetry breaking (canonical representatives)
     # ---------------------------
     # (A) Force team 1 to appear in week 1, period 1 (light, safe)
-    # prob += pulp.lpSum(x[(1,1,1,j)] + x[(1,1,j,1)] for j in T if j != 1) == 1, "sym_team1_w1_p1"
+    # k = random.randint(1, n) 4
+    # if n > 4:
+    #     k = 1
+    #     prob += pulp.lpSum(x[(1,1,k,j)] + x[(1,1,j,k)] for j in T if j != k) == 1, "sym_team1_w1_p1"
 
     # (B) Canonical ordering of weeks by a signature: sum of team IDs in the week
     #     signature_week[w] = sum_{p,i,j} (i + j) * x[w,p,i,j]
     #     then enforce signature_week[w] <= signature_week[w+1]
-    signature_week = {}
-    for w in W:
-        signature_week[w] = pulp.LpVariable(f"sig_w_{w}", lowBound=0, cat="Integer")
-        prob += signature_week[w] == pulp.lpSum((i + j) * x[(w,p,i,j)] for p in P for i in T for j in T if i != j), f"define_sig_w_{w}"
-    for idx in range(len(W) - 1):
-        w = W[idx]
-        wp = W[idx + 1]
-        prob += signature_week[w] <= signature_week[wp], f"order_weeks_{w}_{wp}"
+
+    # signature_week = {}
+    # for w in W:
+    #     # New derivative/ausiliar variable set to continuous, even if integer to not let it use it for branching
+    #     signature_week[w] = pulp.LpVariable(f"sig_w_{w}", lowBound=0, cat=pulp.LpContinuous)
+    #     prob += signature_week[w] == pulp.lpSum((i + j) * x[(w,p,i,j)] for p in P for i in T for j in T if i != j), f"define_sig_w_{w}"
+    # for idx in range(len(W) - 1):
+    #     w = W[idx]
+    #     wp = W[idx + 1]
+    #     prob += signature_week[w] <= signature_week[wp], f"order_weeks_{w}_{wp}" # new var natural and continuos
 
     # (C) Canonical ordering of periods globally (period label permutation across all weeks)
     #     signature_period[p] = sum_{w,i,j} (i + j) * x[w,p,i,j]
     #     enforce signature_period[p] <= signature_period[p+1]
-    signature_period = {}
-    for p in P:
-        signature_period[p] = pulp.LpVariable(f"sig_p_{p}", lowBound=0, cat="Integer")
-        prob += signature_period[p] == pulp.lpSum((i + j) * x[(w,p,i,j)] for w in W for i in T for j in T if i != j), f"define_sig_p_{p}"
-    for idx in range(len(P) - 1):
-        p = P[idx]
-        pp = P[idx + 1]
-        prob += signature_period[p] <= signature_period[pp], f"order_periods_{p}_{pp}"
+    # signature_period = {}
+    # for p in P:
+    #     signature_period[p] = pulp.LpVariable(f"sig_p_{p}", lowBound=0, cat=pulp.LpContinuous)
+    #     prob += signature_period[p] == pulp.lpSum((i + j) * x[(w,p,i,j)] for w in W for i in T for j in T if i != j), f"define_sig_p_{p}"
+    # for idx in range(len(P) - 1):
+    #     p = P[idx]
+    #     pp = P[idx + 1]
+    #     prob += signature_period[p] <= signature_period[pp], f"order_periods_{p}_{pp}"
+    
+    # (ex D) eliminato
+    # (E) Fix composition of first week via circle method (sparse, safe)
 
-    # (D) Simple orientation canonicalization in week 1: for each period p in week1
-    #     force home_team_id <= away_team_id (i.e., ban oriented variables where home_id > away_id)
-    #     This is a light symmetry break: it fixes orientation for week 1 only.
-    for p in P:
-        prob += pulp.lpSum(x[(1,p,i,j)] for i in T for j in T if i > j) == 0, f"orient_w1_p{p}_home_le_away"
+    # pairs_week1 = compute_circle_pairs(n)
+    # # force each pair to appear somewhere in week 1
+    # for (a,b) in pairs_week1:
+    #     prob += pulp.lpSum(x[(1,p,a,b)] + x[(1,p,b,a)] for p in P) == 1, f"circle_w1_pair_{a}_{b}"
+
+
 
     # ---------------------------
     # Solve
     # ---------------------------
-    solver = pulp.PULP_CBC_CMD(msg=True, timeLimit=time_limit, threads=1,
-                               options=["-seconds", str(time_limit), "-timeMode", "elapsed", "-randomSeed", str(seed)])
+    solver = pulp.PULP_CBC_CMD(msg=True, timeLimit=time_limit, threads=1, options=[f"RandomS {seed}"])
     start = time.time()
     status = prob.solve(solver)
     end = time.time()
@@ -161,20 +184,22 @@ def build_model(n: int, time_limit: int = 300, seed: int = 42):
 
 
 if __name__ == '__main__':
-    n = 12
-    res_dir = os.path.join(os.path.dirname(__file__), "..", "..", "res", "MIP")
-    os.makedirs(res_dir, exist_ok=True)
-    out_path = os.path.join(res_dir, f"v2_{n}.json")
-    global_start = time.time()
-    result, meta = build_model(n, time_limit=300, seed=42)
-    global_end = time.time()
-    total_runtime = global_end - global_start
+    
+    for x in [0, 1234567, 1756566010, 26, 42]:
+        n = 14
+        res_dir = os.path.join(os.path.dirname(__file__), "..", "..", "res", "MIP", "v2_seed")
+        os.makedirs(res_dir, exist_ok=True)
+        out_path = os.path.join(res_dir, f"v2_{x}_{n}.json")
+        global_start = time.time()
+        result, meta = build_model(n, time_limit=300, seed=x)
+        global_end = time.time()
+        total_runtime = global_end - global_start
 
-    key = "CBC_sym"
-    payload = {key: result}
-    with open(out_path, "w") as f:
-        json.dump(payload, f, indent=2)
+        key = "CBC_i_different_j"
+        payload = {key: result}
+        with open(out_path, "w") as f:
+            json.dump(payload, f, indent=2)
 
-    print(f"[DONE] n={n} approach= CBC_sym -> {out_path}")
-    print(f"Status: {meta['pulp_status']} | optimal={result['optimal']} | obj={result['obj']}")
-    print(f"Runtime (total, incl. 'presolve') = {total_runtime:.2f}s (time field written: {result['time']})")
+        print(f"[DONE] n={n} approach= {key} -> {out_path}")
+        print(f"Status: {meta['pulp_status']} | optimal={result['optimal']} | obj={result['obj']}")
+        print(f"Runtime (total, incl. 'presolve') = {total_runtime:.2f}s (time field written: {result['time']})")

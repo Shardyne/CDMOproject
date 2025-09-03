@@ -1,0 +1,387 @@
+{
+  "CBC_i<j_balanced_full": {
+    "time": 300,
+    "optimal": false,
+    "obj": 0.0,
+    "sol": [
+      [
+        [
+          5,
+          14
+        ],
+        [
+          1,
+          11
+        ],
+        [
+          11,
+          4
+        ],
+        [
+          4,
+          12
+        ],
+        [
+          3,
+          12
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ]
+      ],
+      [
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          6,
+          4
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          7,
+          5
+        ],
+        [
+          2,
+          11
+        ]
+      ],
+      [
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          12,
+          7
+        ],
+        [
+          9,
+          5
+        ],
+        [
+          14,
+          8
+        ],
+        [
+          6,
+          1
+        ],
+        [
+          5,
+          3
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          4,
+          13
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ]
+      ],
+      [
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          3,
+          13
+        ],
+        [
+          1,
+          10
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          5,
+          13
+        ],
+        [
+          14,
+          11
+        ],
+        [
+          7,
+          4
+        ]
+      ],
+      [
+        [
+          13,
+          12
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          12,
+          11
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          13,
+          8
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ]
+      ],
+      [
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          8,
+          6
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          2,
+          14
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          12,
+          9
+        ],
+        [
+          12,
+          8
+        ]
+      ],
+      [
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          12,
+          5
+        ],
+        [
+          1,
+          13
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          14,
+          12
+        ],
+        [
+          4,
+          14
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          8,
+          4
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ],
+        [
+          "No x found in pairs [{i}]",
+          "No x found in pairs [{j}]"
+        ]
+      ]
+    ]
+  }
+}

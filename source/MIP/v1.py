@@ -20,7 +20,7 @@ except Exception as e:
     print("ERROR: PuLP non disponibile:", e, file=sys.stderr)
     sys.exit(1)
 
-def build_model(n: int, time_limit: int = 300, seed: int = 42):
+def build_model(n: int, time_limit: int = 300, seed: int = 0):
     assert n % 2 == 0 and n >= 2
     W = list(range(1, n))                  # weeks: 1..n-1
     P = list(range(1, n//2 + 1))           # periods: 1..n/2
@@ -63,17 +63,8 @@ def build_model(n: int, time_limit: int = 300, seed: int = 42):
                 x[w][p][i][j] + x[w][p][j][i] for w in W for j in T if j != i
             ) <= 2, f"period_cap_team{i}_p{p}"
 
-    # Optional light symmetry breaking to speed-up a bit (doesn't change feasibility):
-    # Fix team 1 to play in period 1 in weeks 1 and 2 (if n>=4), arbitrary orientation.
-    # This is safe and mildly reduces equivalent labelings.
-    if n >= 4:
-        # Week 1: team 1 must appear in period 1
-        prob += pulp.lpSum(x[1][1][1][j] + x[1][1][j][1] for j in T if j != 1) == 1, "sym_w1_p1_t1"
-        # Week 2: team 1 must appear in period 1
-        prob += pulp.lpSum(x[2][1][1][j] + x[2][1][j][1] for j in T if j != 1) == 1, "sym_w2_p1_t1"
-
     # Solve
-    solver = pulp.PULP_CBC_CMD(msg=True, timeLimit=time_limit, threads=1, options=["-seconds", str(time_limit),"-timeMode", "elapsed", "-randomSeed", str(seed)])
+    solver = pulp.PULP_CBC_CMD(msg=True, timeLimit=time_limit, threads=1, options=[f"RandomS {seed}"])
     start = time.time()
     status = prob.solve(solver)
     end = time.time()
@@ -130,26 +121,45 @@ def build_model(n: int, time_limit: int = 300, seed: int = 42):
     return result, meta
 
 def main():
-    n = 12
-    res_dir = os.path.join(os.path.dirname(__file__), "..", "..", "res", "MIP")
-    os.makedirs(res_dir, exist_ok=True)
-    out_path = os.path.join(res_dir, f"prova_{n}.json")
-    # Misura tempo complessivo 
-    global_start = time.time()
-    result, meta = build_model(n, time_limit=300, seed=42) 
-    global_end = time.time()
-    total_runtime = global_end - global_start
+    for x in [0, 1234567, 1756566010, 26, 42]:
+        n = 14
+        res_dir = os.path.join(os.path.dirname(__file__), "..", "..", "res", "MIP", "v1_seed")
+        os.makedirs(res_dir, exist_ok=True)
+        out_path = os.path.join(res_dir, f"v1_{x}_{n}.json")
+        # Misura tempo complessivo 
+        global_start = time.time()
+        result, meta = build_model(n, time_limit=300, seed=x)  # ,seed=1756566010
+        global_end = time.time()
+        total_runtime = global_end - global_start
 
-    # Salva JSON nel formato richiesto: chiave = nome approccio
-    key = f"CBC"
-    payload = { key: result }
-    with open(out_path, "w") as f:
-        json.dump(payload, f, indent=2)
+        # Salva JSON nel formato richiesto: chiave = nome approccio
+        key = f"CBC"
+        payload = { key: result }
+        with open(out_path, "w") as f:
+            json.dump(payload, f, indent=2)
 
-    # Stampa breve log
-    print(f"[DONE] n={n} approach= CBC -> {out_path}")
-    print(f"Status: {meta['pulp_status']} | optimal={result['optimal']} | obj={result['obj']}")
-    print(f"Runtime (total, incl. 'presolve') = {total_runtime:.2f}s (time field written: {result['time']})")
+        # Stampa breve log
+        print(f"[DONE] n={n} approach= {key} -> {out_path}")
+        print(f"Status: {meta['pulp_status']} | optimal={result['optimal']} | obj={result['obj']}")
+        print(f"Runtime (total, incl. 'presolve') = {total_runtime:.2f}s (time field written: {result['time']})")
+
+
+    # n = 20
+    # for x in range(5):
+    #     res_dir = os.path.join(os.path.dirname(__file__), "..", "..", "res", "MIP", "v1_seed")
+    #     os.makedirs(res_dir, exist_ok=True)
+    #     out_path = os.path.join(res_dir, f"v1_seed{x}_{n}.json")
+    #     # Misura tempo complessivo 
+    #     global_start = time.time()
+    #     result, meta = build_model(n, time_limit=100)
+    #     global_end = time.time()
+    #     total_runtime = global_end - global_start
+
+    #     # Salva JSON nel formato richiesto: chiave = nome approccio
+    #     key = f"CBC_seed{x}"
+    #     payload = { key: result }
+    #     with open(out_path, "w") as f:
+    #         json.dump(payload, f, indent=2)
 
 
 if __name__ == "__main__":

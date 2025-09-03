@@ -15,12 +15,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     unzip \
     ca-certificates \
-    coinor-cbc \
     glpk-utils \
     libglpk40 \
     libc6 \
     libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
+
+#     coinor-cbc \
 
 # Install PuLP and numpy
 RUN pip install --no-cache-dir pulp numpy z3-solver
