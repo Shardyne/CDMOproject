@@ -1,1 +1,6 @@
-{"z3_offline_4":{"time":0,"optimal":true,"obj":null,"sol":[]}}
+{"z3_channeled": {"time": 0, "optimal": true, "obj": null, "sol": []},
+"z3_offline": {"time": 0, "optimal": true, "obj": null, "sol": []},
+"cvc5_channeled": {"time": 0, "optimal": true, "obj": null, "sol": []}, 
+"cvc5_offline": {"time": 0, "optimal": true, "obj": null, "sol": []}, 
+"opti_offline": {"time": 0, "optimal": true, "obj": null, "sol": []}, 
+"opti_channeled": {"time": 0, "optimal": true, "obj": null, "sol": []}}

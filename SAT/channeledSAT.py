@@ -85,7 +85,7 @@ def solve_sts_matchSAT(N, write_json=True):
                     home_bits.append(H[(w,i)])
                 elif t == v:
                     home_bits.append(Not(H[(w,i)]))
-        s.add(Implies(High[t],      PbEq([(b,1) for b in home_bits], f+1))) #ensure that if high then it sums to that
+        s.add(PbEq([(b,1) for b in home_bits], f+1)) #ensure that if high then it sums to that
         s.add(Implies(Not(High[t]), PbEq([(b,1) for b in home_bits], f))) #ensure if not high 
     s.add(PbEq([(High[t],1) for t in teams], high_count)) #
 
@@ -137,6 +137,7 @@ def solve_sts_matchSAT(N, write_json=True):
         obj_val = sum(abs(2*h - W) for h in homes)
 
         write_json(out_path, approach, total_elapsed, True, obj_val, sol)
+        print(obj_val)
         return sol
 
     elif res == unsat:
@@ -153,6 +154,6 @@ def solve_sts_matchSAT(N, write_json=True):
         return None
 
 if __name__ == "__main__":
-    solve_sts_matchSAT(4)
+    solve_sts_matchSAT(20)
     # solve_sts_matchSAT(10)
     # solve_sts_matchSAT(22)
