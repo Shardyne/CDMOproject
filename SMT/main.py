@@ -18,18 +18,21 @@ def main():
     total_time=0
     approach = f'{args.solver}_{args.approach}'
 
-    # define the channele approach
+    # define the channeled approach
     if args.approach == 'channeled':
+        start=time.time()
         s, Per, Home, Opp = channeled_model_no_check(N)
         s = symmetry_breaking_constraints(N, s, Home, Per, Opp)
         smt = s.to_smt2()
+        end=time.time()-start
 
         with tempfile.NamedTemporaryFile("w", suffix=".smt2", delete=False) as f:
             f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n")
             f.write(smt)
             f.write("(get-model)\n")
             f.flush()
-            stdout, stderr, elapsed = run_solver(f.name, args.solver, args.timeout)
+            stdout, stderr, elapsed = run_solver(f.name, args.solver, args.timeout-end)
+            print(end)
             tmp_path = f.name
         os.remove(tmp_path)
 
@@ -39,7 +42,7 @@ def main():
         else:
             solved = 1
         
-        total_time += elapsed
+        total_time += elapsed+end
 
         if solved != 0:
             assigns = parse_model(stdout)
@@ -54,10 +57,13 @@ def main():
 
         while solved != 0 and not (status=='timeout' or status in ('unknown', 'unsat') ):
             sol1, sol2 = stdout, stderr
+            start2=time.time()
             s, Per, Home, Opp = channeled_model_no_check(N)
-            s, Home = smt_obj_manual(N, Home, obj, counts, s, offline=False)
+            s, Home = smt_obj_manual(N, Home, obj, counts, s)
             s = symmetry_breaking_constraints(N, s, Home, Per, Opp)
             smt = s.to_smt2()
+            end2=time.time()-start2
+            total_time+=end2
 
             with tempfile.NamedTemporaryFile("w", suffix=".smt2", delete=False) as f:
                 f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n")
@@ -84,16 +90,18 @@ def main():
 
 
     elif args.approach == 'offline':
+        start3=time.time()
         s, Home, Per, matches = offline_approach_domains(N)
         s = symmetry_breaking_constraints_offline(N, s, Home, Per, matches)
         smt = s.to_smt2()
+        end3=time.time()-start3
 
         with tempfile.NamedTemporaryFile("w", suffix=".smt2", delete=False) as f:
             f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n")
             f.write(smt)
             f.write("(get-model)\n")
             f.flush()
-            stdout, stderr, elapsed = run_solver(f.name, args.solver, args.timeout)
+            stdout, stderr, elapsed3 = run_solver(f.name, args.solver, args.timeout)
             tmp_path = f.name
         os.remove(tmp_path)
 
@@ -103,13 +111,15 @@ def main():
         else:
             solved = 1
 
+        total_time+=elapsed3+end3
+
         if solved != 0:
             assigns = parse_model(stdout)
             T, W, P = N, N - 1, N // 2
             Home = read_grid(assigns, "Home", T, W, default=False)
             counts = [sum(1 if as_bool(Home[t][w]) else 0 for w in range(W)) for t in range(T)]
             obj = int(sum(abs(2 * c - W) for c in counts))
-            total_time = elapsed
+            
             print(counts)
         else:
             # handle timeout/unsat
@@ -117,19 +127,22 @@ def main():
 
         while solved != 0 and not (status=='timeout' or status in ('unknown', 'unsat') ):
             sol1, sol2 = stdout, stderr
+            start4=time.time()
             s, Home, Per, matches = offline_approach_domains(N)
-            s, Home = smt_obj_manual(N, Home, obj, counts, s, offline=False)
+            s, Home = smt_obj_manual(N, Home, obj, counts, s)
             s = symmetry_breaking_constraints_offline(N, s, Home, Per, matches)
             smt = s.to_smt2()
+            end4=time.time()-start4
 
             with tempfile.NamedTemporaryFile("w", suffix=".smt2", delete=False) as f:
                 f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)")
                 f.write(smt)
                 f.write("(get-model)\n")
                 f.flush()
-                stdout, stderr, elapsed2 = run_solver(f.name, args.solver, args.timeout - total_time) 
+                total_time+=end4
+                stdout, stderr, elapsed4 = run_solver(f.name, args.solver, args.timeout - total_time) 
                 os.remove(f.name)
-            total_time += elapsed2
+            total_time += elapsed4
 
             assigns = parse_model(stdout)
             if not assigns:
@@ -153,7 +166,7 @@ def main():
             try:
                 with open(outpath, "r") as f: existing = json.load(f)
             except Exception: pass
-        existing[approach] = {"time": total_time, "optimal": False, "obj": None, "sol": []}
+        existing[approach] = {"time": int(total_time), "optimal": False, "obj": None, "sol": []}
         with open(outpath, "w") as f: json.dump(existing, f)
         print(f"[TIMEOUT] merged placeholder into {outpath}")
         return
@@ -224,7 +237,7 @@ def main():
     }
     with open(outpath, "w") as f:
         json.dump(existing, f)
-    print(f"[OK] {approach}_{N} → {outpath}  (time={total_time:.2f}s, obj={obj})")
+    print(f"[OK] {approach}_{N} → {outpath}  (time={int(total_time)}s, obj={obj})")
     print(counts)
 
 

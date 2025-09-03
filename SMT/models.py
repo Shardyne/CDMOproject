@@ -4,21 +4,21 @@ def channeled_model_no_check(N):
     W = N - 1
     P = N // 2
 
-    # Define Z3 variables
+    # Define   variables
     Per = [[Int(f"Per_{t}_{w}") for w in range(W)] for t in range(N)]
     Home = [[Bool(f"Home_{t}_{w}") for w in range(W)] for t in range(N)]
     Opp = [[Int(f"Opp_{t}_{w}") for w in range(W)] for t in range(N)]
 
     solver = Solver()
 
-    # Domains & basic constraints
+    # Domains
     for t in range(N):
         for w in range(W):
             solver.add(And(1 <= Per[t][w], Per[t][w] <= P))
             solver.add(And(1 <= Opp[t][w], Opp[t][w] <= N))
             solver.add(Opp[t][w] != t + 1)
 
-    # Channeling
+    # Channeling from Opp to Per
     for t in range(N):
         for k in range(N):
             if t == k: continue
@@ -30,7 +30,7 @@ def channeled_model_no_check(N):
                 solver.add(Implies(Opp[t][w] == k + 1, Xor(Home[t][w], Home[k][w])))
 
 
-    # Core constraints
+    # Main constraints
     for t in range(N):
         solver.add(Distinct([Opp[t][w] for w in range(W)]))
 
@@ -71,31 +71,19 @@ def symmetry_breaking_constraints(N, solver, Home, Per, Opp):
     return solver
 
 # function used for imposing the optimization constraints for both approaches
-def smt_obj_manual(N, Home, obj, counts, solver, offline=True):
+def smt_obj_manual(N, Home, obj, counts, solver):
     W=N-1
     
     # count the number of home games
     count_home = [Sum([If(Home[t][w], 1, 0) for w in range(W)]) for t in range(N)]
     diffs=[]
     for t in range(N):
-
         # implied constraint to go with direct the search
         solver.add(count_home[t]<=max(counts))
         solver.add(count_home[t]>=min(counts))
-        if offline:
-            diff = Int(f"diff_{t}")
-            diffs.append(diff)
-            solver.add(diff >= 2*count_home[t] - W)
-            solver.add(diff >= -(2*count_home[t] - W))
-            solver.add(diff <= W)
-
-    # different way for offline and channeled
-    if offline:
-        solver.add(Sum(diffs) < obj)
-        solver.add(Sum(diffs) >= N)
-    else:
-        solver.add(Sum([Abs(2*count_home[t] - W) for t in range(N)]) <obj)
-        solver.add(Sum([Abs(2*count_home[t] - W) for t in range(N)]) >=N)
+    
+    solver.add(Sum([Abs(2*count_home[t] - W) for t in range(N)]) <obj)
+    solver.add(Sum([Abs(2*count_home[t] - W) for t in range(N)]) >=N)
 
     # return the solver for the sy
     return solver, Home
@@ -175,8 +163,6 @@ def offline_approach_domains(N):
 def symmetry_breaking_constraints_offline(N, solver, Home, Per, matches):
     
     # Break global home/away flip
-
-    
     solver.add(Home[0][0])
     
     # Canonicalize week 0 layout: pairsolver (0,N-1), (1,N-2), ..., (P-1,P)

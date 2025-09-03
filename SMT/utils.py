@@ -215,7 +215,7 @@ def run_solver(smt_path, solver, timeout_s):
     if "z3" in solver_name:
         cmd = [
     solver, "-smt2", smt_path,
-    "smt.random_seed=0",
+    "smt.random_seed=15",
     "smt.phase_selection=4",   # Disable flattening that can vary
 ]
     elif "cvc5" in solver_name:
