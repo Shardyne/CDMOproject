@@ -1,0 +1,8 @@
+{
+  "GLPK_i<j_balanced_week1": {
+    "time": 300,
+    "optimal": false,
+    "obj": null,
+    "sol": []
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "GLPK_i<j_balanced_half_full": {
+    "time": 300,
+    "optimal": false,
+    "obj": null,
+    "sol": []
+  }
+}

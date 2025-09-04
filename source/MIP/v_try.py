@@ -39,22 +39,22 @@ def balanced_circle_method_pairs(n, half:bool = False):
         for id_p in range(p):
             if not half:
                 if (wk + id_p) % 2 == 0:
-                    pairs.append((arr[id_p], arr[-1 - id_p]))
-                else:
                     pairs.append((arr[-1 - id_p], arr[id_p]))
+                else:
+                    pairs.append((arr[id_p], arr[-1 - id_p]))
             else:
                 if random.choice([True, False]):
                     if (wk + id_p) % 2 == 0:
-                        pairs.append((arr[id_p], arr[-1 - id_p]))
-                    else:
                         pairs.append((arr[-1 - id_p], arr[id_p]))
+                    else:
+                        pairs.append((arr[id_p], arr[-1 - id_p]))
                 else:
                     pairs.append((0, 0))
         schedule[wk] = pairs  # pairs are 1-based team IDs
         others = [others[-1]] + others[:-1]
     return schedule
 
-def build_model(n: int, time_limit: int = 300, seed: int = 0,
+def build_model(n: int, solver: str = "CBC", time_limit: int = 300, seed: int = 0,
                 presolve: bool = False, objective: str = "feasible",
                 version: str = "base", sym_flags: str = "", warm_start: str = ""):
     """
@@ -235,20 +235,6 @@ def build_model(n: int, time_limit: int = 300, seed: int = 0,
             wp = W[idx + 1]
             prob += signature_week[w] <= signature_week[wp], f"order_weeks_{w}_{wp}"
 
-    # (D) Canonical ordering of periods globally: signature_period[p] <= signature_period[p+1]
-    if 'D' in flags:
-        signature_period = {}
-        for p in P:
-            signature_period[p] = pulp.LpVariable(f"sig_p_{p}", lowBound=0, cat=pulp.LpContinuous)
-            if version == "i<j":
-                prob += signature_period[p] == pulp.lpSum((i + j) * x[(w,p,i,j)] for (i,j) in pairs for w in W), f"define_sig_p_{p}"
-            else:
-                prob += signature_period[p] == pulp.lpSum((i + j) * (x[(w,p,i,j)] + x[(w,p,j,i)]) for (i,j) in pairs for w in W), f"define_sig_p_{p}"
-        for idx in range(len(P) - 1):
-            p = P[idx]
-            pp = P[idx + 1]
-            prob += signature_period[p] <= signature_period[pp], f"order_periods_{p}_{pp}"
-
     # ---------- WARM START HANDLING ----------
     # warm_start parameter accepted values:
     #   "" -> no warm start
@@ -276,9 +262,9 @@ def build_model(n: int, time_limit: int = 300, seed: int = 0,
                 key2 = (wk, per, b, a)
                 if key1 in x:
                     x[key1].setInitialValue(1)
-                elif key2 in x:
-                    # We set the reverse order variable to 0
                     x[key2].setInitialValue(0)
+                else:
+                    print(f"NEITHER {key1} NOR {key2} FOUND in x; SKIPPING.")
 
         # Complete warm start
         if ws in ["bal_full", "half_full"]:
@@ -336,14 +322,28 @@ def build_model(n: int, time_limit: int = 300, seed: int = 0,
     if do_warm_start:
         time_mod -= time_warm
 
-    solver = pulp.PULP_CBC_CMD(
-        msg=True, 
-        timeLimit=time_mod, 
-        threads=1, 
-        presolve=presolve, 
-        warmStart=do_warm_start, 
-        options=[f"RandomS {seed}"]
+    if solver == "HiGHS":
+        solver = pulp.HiGHS_CMD(
+            msg=True,
+            timeLimit=math.ceil(time_mod),
+            threads=1,
+            warmStart=do_warm_start
         )
+    elif solver == "GLPK":
+        solver = pulp.GLPK_CMD(
+            msg=True,
+            timeLimit=math.ceil(time_mod),
+            options=["--seed=12345"]
+        )
+    else:
+        solver = pulp.PULP_CBC_CMD(
+            msg=True, 
+            timeLimit=time_mod, 
+            threads=1, 
+            presolve=presolve, 
+            warmStart=do_warm_start, 
+            options=[f"RandomS {seed}"]
+            )
     start = time.time()
     status_code = prob.solve(solver)
     end = time.time()
@@ -502,34 +502,37 @@ def build_model(n: int, time_limit: int = 300, seed: int = 0,
 
 if __name__ == '__main__':
     # simple driver: iterate combinations (nota: passiamo presolve correttamente)
-    for version in ["i<j"]: # "base", ,"i<j"
-        for objective in ["balanced" ]: #"feasible","balanced",
-            for seed in [262626, 948486489 ,1234567, 5656565, 0, 1756566010, 26, 42, 878641, 424242]:#262626, 948486489 , 1234567, 5656565  , 1756566010, 26, 42, 878641, 424242
-                for presolve in [True, False]:#  ,False
-                # presolve = True
-                    for warm_start in ["bal_full", "half_full"]: # "week1"  
-                    # for sym_flags in [""]: #"AC","BC","B","D"
-                        for n in range(12, 15, 2):
-                            res_dir = os.path.join(os.path.dirname(__file__), "..", "..", "res", "MIP", "check_stop",f"{warm_start}_{objective}") #, "bin"
-                            os.makedirs(res_dir, exist_ok=True)
-                            out_path = os.path.join(res_dir, f"{version}_{presolve}_{seed}_{n}.json")
-                            global_start = time.time()
-                            try:
-                                result, meta = build_model(n, time_limit=300, seed=seed,
-                                                            presolve=presolve, version=version,
-                                                            objective=objective, warm_start=warm_start)
-                            except Exception as e:
-                                print(f"[ERROR] n={n} v={version} obj={objective} seed={seed} presolve={presolve}: {e}")
-                                result = {"time":300,"optimal":False,"obj":None,"sol":[]}
-                                meta = {"pulp_status":"error","runtime_sec":0.0}
-                            global_end = time.time()
-                            total_runtime = global_end - global_start
-    
-                            key = f"CBC_{version}_{objective}_{warm_start}"
-                            payload = { key: result }
-                            with open(out_path, "w") as f:
-                                json.dump(payload, f, indent=2)
+    for version,objective in [("i<j","balanced"), ("base","feasible")]: # ("i<j","balanced"), ("base","feasible") "base", ,"i<j",#"feasible","balanced",
+        for sym_flags in ["", "A"]: # "BC", "B", "C", "A", "AC" 
+            for seed in [26, 42 ]:#262626, 948486489 , 1234567, 5656565, 0 , 1756566010, 26, 42, 878641, 424242
+                for presolve in [True]:
+                    for warm_start in ["week1","bal_full"]: # "week1","bal_full", "half_full"
+                        for n in range(8, 13, 2):
+                            for solver in [ "GLPK"]: # "CBC" , "GLPK", "HiGHS"
+                                res_dir = os.path.join(os.path.dirname(__file__), "..", "..", "res", "MIP","dump",f"{solver}",f"{version}_{objective}",f"{warm_start}") # , f"{solver}",f"{warm_start}_{objective}"
+                                os.makedirs(res_dir, exist_ok=True)
+                                out_path = ""
+                                if solver == "GLPK":
+                                    out_path = os.path.join(res_dir, f"{n}.json")
+                                else:
+                                    out_path = os.path.join(res_dir, f"{version}_{presolve}_{seed}_{n}.json")
+                                global_start = time.time()
+                                try:
+                                    result, meta = build_model(n, solver = solver, time_limit=300, seed=seed,
+                                                                presolve=presolve, version=version, sym_flags=sym_flags,
+                                                                objective=objective, warm_start=warm_start)
+                                except Exception as e:
+                                    print(f"[ERROR] n={n} v={version} obj={objective} seed={seed} presolve={presolve}: {e}")
+                                    result = {"time":300,"optimal":False,"obj":None,"sol":[]}
+                                    meta = {"pulp_status":"error","runtime_sec":0.0}
+                                global_end = time.time()
+                                total_runtime = global_end - global_start
+        
+                                key = f"{solver}_{version}_{objective}_{warm_start}"
+                                payload = { key: result }
+                                with open(out_path, "w") as f:
+                                    json.dump(payload, f, indent=2)
 
-                            print(f"[DONE] n={n} approach= {key} presolve={presolve} seed={seed} -> {out_path}")
-                            print(f"Status: {meta['pulp_status']} | optimal={result['optimal']} | obj={result['obj']}")
-                            print(f"Runtime (total, incl. 'presolve') = {total_runtime:.2f}s (time field written: {result['time']})")
+                                print(f"[DONE] n={n} approach= {key} presolve={presolve} seed={seed} -> {out_path}")
+                                print(f"Status: {meta['pulp_status']} | optimal={result['optimal']} | obj={result['obj']}")
+                                print(f"Runtime (total, incl. 'presolve') = {total_runtime:.2f}s (time field written: {result['time']})")

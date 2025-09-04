@@ -43,7 +43,7 @@ Sono spesso molto più veloci in pratica su MILP difficili
 
 # Come ho implementato i symmetry breaking
 
-1. **Ancora di etichettamento (team 1 in week 1, period 1)**
+A. **Ancora di etichettamento (team 1 in week 1, period 1)**
    Ho fissato che nella settimana 1, periodo 1, il team 1 deve comparire (in una delle due posizioni). Questo ELIMINA la permutazione “banale” dei nomi delle squadre: senza un’**ANCORA**, rinominare le squadre produce istanze equivalenti e l’albero di branch-and-bound esplode. Tecnicamente è un vincolo di copertura su quello slot:
 
    $$
@@ -52,7 +52,7 @@ Sono spesso molto più veloci in pratica su MILP difficili
 
    È una rottura **molto leggera** e sicura (non elimina soluzioni “vere”, conserva almeno un rappresentante per ogni classe d’isomorfismo). ([SpringerLink][1])
 
-2. **Ordinamento canonico delle settimane (anti-permutazione di settimane)**
+C. **Ordinamento canonico delle settimane (anti-permutazione di settimane)**
    Per ogni slot ti calcoli la somma $i$ + $j$. 
    Ho introdotto per ogni settimana $w$ una **firma** (*signature guarda sotto per capire cos'è*) lineare:
 
@@ -63,7 +63,7 @@ Sono spesso molto più veloci in pratica su MILP difficili
    e ho imposto $ s_1 \le s_2 \le \dots \le s_{n-1}$.
    Intuizione: se permuti le settimane, cambi l’ordine con cui compaiono certe coppie e quindi cambi la somma dei pesi $(i+j)$. Ordinandole per firma non decrescente elimini (una parte) delle simmetrie di permutazione globale delle settimane, senza dover scrivere un lessico completo (che sarebbe più costoso). Questi sono **vincoli “statici” di symmetry breaking** in stile “lex/ordering” (ma con una proxy). ([ojs.aaai.org][2], [SpringerLink][1])
 
-3. **Ordinamento canonico dei periodi (anti-permutazione globale degli slot)**
+D. **Ordinamento canonico dei periodi (anti-permutazione globale degli slot)**
    In modo analogo, ho definito una firma per ogni **periodo** aggregando su **tutte** le settimane:
 
    $$
@@ -73,7 +73,7 @@ Sono spesso molto più veloci in pratica su MILP difficili
    e imposto $ t_1 \le t_2 \le \dots \le t_{n/2}$.
    Questo uccide la simmetria “periodo 1 $\leftrightarrow$ periodo 3 per tutte le settimane” con un solo vincolo per coppia di periodi, invece di dover introdurre un ordinamento lessicografico completo delle matrici week×period. È lo stesso spirito degli **orbitopes** (rompere simmetrie di righe/colonne in matrici 0-1), ma in versione “povera” e compatibile con PuLP/CBC senza callback. ([optimization-online.org][3], [arXiv][4])
 
-4. **Orientazione canonica nella settimana 1**
+B. **Orientazione canonica nella settimana 1**
    Per eliminare la simmetria home/away, ma senza vincolare troppo la struttura delle settimane successive.
    Per ogni periodo $p$ della **settimana 1** ho imposto che, se in quello slot gioca la coppia $\{i,j\}$, allora il *home* deve essere il min($i,j$). In pratica, per la settimana 1 disabilito tutte le scelte con $j<i$:
 
