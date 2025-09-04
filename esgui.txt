@@ -1,0 +1,11 @@
+# Build image (solo se serve o se Dockerfile è cambiato)
+docker build -t sts_container .
+
+# Run interactive container mounting source/ and res/
+docker run --rm -it \
+  -v $(pwd)/source:/CDMO/source \
+  -v $(pwd)/res:/CDMO/res \
+  sts_container \
+  /bin/bash
+
+python mip.2.py --n 6 --approach balance --timeout 100  
