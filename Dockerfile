@@ -65,17 +65,28 @@ RUN set -eux; \
       echo \"[cvc5] no cvc5 binary found under /opt/cvc5\"; \
     fi
 
-# Install MiniZinc (x86_64 bundle with Gecode & Chuffed)
-ARG MINIZINC_VER=2.8.5
 
+# Install MiniZinc (x86_64 bundle)
+# Install MiniZinc (x86_64 bundle)
 RUN set -eux; \
-    apt-get update && apt-get install -y --no-install-recommends wget unzip ca-certificates; \
+    apt-get update && apt-get install -y --no-install-recommends wget tar ca-certificates; \
     rm -rf /var/lib/apt/lists/*; \
     cd /tmp; \
-    wget -q "https://github.com/MiniZinc/MiniZincIDE/releases/download/${MINIZINC_VER}/MiniZincIDE-${MINIZINC_VER}-x86_64-linux.deb"; \
-    apt-get update && apt-get install -y ./MiniZincIDE-${MINIZINC_VER}-x86_64-linux.deb; \
-    rm -f MiniZincIDE-${MINIZINC_VER}-x86_64-linux.deb; \
-    apt-get clean; \
+    MINIZINC_VER=2.9.3; \
+    wget -q "https://github.com/MiniZinc/MiniZincIDE/releases/download/${MINIZINC_VER}/MiniZincIDE-${MINIZINC_VER}-bundle-linux-x86_64.tgz"; \
+    tar -xzf "MiniZincIDE-${MINIZINC_VER}-bundle-linux-x86_64.tgz";
+
+RUN set -eux; \
+    apt-get update && apt-get install -y --no-install-recommends wget tar ca-certificates; \
+    rm -rf /var/lib/apt/lists/*; \
+    cd /tmp; \
+    MINIZINC_VER=2.9.3; \
+    wget -q "https://github.com/MiniZinc/MiniZincIDE/releases/download/${MINIZINC_VER}/MiniZincIDE-${MINIZINC_VER}-bundle-linux-x86_64.tgz"; \
+    tar -xzf "MiniZincIDE-${MINIZINC_VER}-bundle-linux-x86_64.tgz"; \
+    MINIZINC_DIR="/tmp/MiniZincIDE-${MINIZINC_VER}-bundle-linux-x86_64/bin"; \
+    chmod +x "$MINIZINC_DIR/minizinc"; \
+    ln -sf "$MINIZINC_DIR/minizinc" /usr/local/bin/minizinc; \
+    rm -f "MiniZincIDE-${MINIZINC_VER}-bundle-linux-x86_64.tgz"; \
     echo "[minizinc] installed version:"; minizinc --version
     
 # Copy project files
