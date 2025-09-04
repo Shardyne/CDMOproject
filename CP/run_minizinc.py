@@ -6,10 +6,20 @@ from pathlib import Path
 UNKNOWN_SOLUTION_DEFAULT_MESSAGE = "UNKNOWN====="
 UNSATISFIABLE_SOLUTION_DEFAULT_MESSAGE = "UNSATISFIABLE====="
 
-INPUT_DATA_FILENAME = "./_cache_/preprocessed_data" + ".dzn"
+INPUT_DATA_FILENAME = "./_cache_/preprocessed_data" + ".json"
 PARTIAL_OUTPUT_FILENAME = "./_cache_/partial_output" + ".json"
 
 BASELINE_TIMEOUT = 300_000
+
+EXECUTION_CONFIGURATIONS = {
+    "v1": {
+        "first_model": "ciao",
+        "second_model": "ciao"
+    }, 
+    "v2": {
+
+    }
+}
 
 def extract_between(text: str, substring: str) :
     # Find where the substring starts
@@ -24,6 +34,30 @@ def extract_between(text: str, substring: str) :
         # If no newline found, take until end of text
         return text[start_index:].strip()
     return text[start_index:end_index].strip()
+
+'''
+returns a 3-dim list where these are the dimensions: [2][periods][weeks]
+'''
+def write_tridimensional_round_robin(n:int):
+    periods, weeks = n // 2, n - 1
+    calendar = [[[[1] for _ in range(weeks)] for _ in range(periods)] for _ in range(2)]
+    teams = list(range(1, n + 1))
+    for w in range(weeks):
+        for p in range(periods):
+            calendar[0][p][w] = teams[p]
+            calendar[1][p][w] = teams[n - 1 - p]
+
+        # rotate everything except the first team
+        teams = [teams[0]] + teams[-1:] + teams[1:-1]
+    output_data = {
+        "n": n,
+        "calendar": calendar
+    }
+    Path(INPUT_DATA_FILENAME).parent.mkdir(parents=True, exist_ok=True)
+    with open(INPUT_DATA_FILENAME, "w") as f:
+        json.dump(output_data, f)
+    return calendar
+                
 
 def write_triangular_dzn(n: int):
     if n % 2 != 0:
@@ -109,7 +143,7 @@ if __name__ == "__main__":
     optional_hap_model = sys.argv[4] if len(sys.argv) > 4 else None
     output_path = Path(f"../res/CP/{n}.json")
     partial_output_path = Path(f"./{PARTIAL_OUTPUT_FILENAME}")
-    write_triangular_dzn(int(n))
+    write_tridimensional_round_robin(int(n))
 
     result1 = run_minizinc(model, solver)
 
