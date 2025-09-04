@@ -1,7 +1,7 @@
 import subprocess
-import sys
 import json
 from pathlib import Path
+import argparse
 
 UNKNOWN_SOLUTION_DEFAULT_MESSAGE = "UNKNOWN====="
 UNSATISFIABLE_SOLUTION_DEFAULT_MESSAGE = "UNSATISFIABLE====="
@@ -9,15 +9,24 @@ UNSATISFIABLE_SOLUTION_DEFAULT_MESSAGE = "UNSATISFIABLE====="
 INPUT_DATA_FILENAME = "./_cache_/preprocessed_data" + ".json"
 PARTIAL_OUTPUT_FILENAME = "./_cache_/partial_output" + ".json"
 
-BASELINE_TIMEOUT = 300_000
-
 EXECUTION_CONFIGURATIONS = {
     "v1": {
-        "first_model": "ciao",
-        "second_model": "ciao"
+        "first_model": "round_robin_model.mzn",
+        "hap_model": "HAP_v1_model.mzn",
+        "solver": "chuffed",
+        "round_robin": True
     }, 
     "v2": {
-
+        "first_model": "constraint_v2_model.mzn",
+        "hap_model": "HAP_v1_model.mzn",
+        "solver": "gecode",
+        "round_robin": False
+    },
+    "v3": {
+        "first_model": "constraint_v2_model.mzn",
+        "hap_model": None,
+        "solver": "gecode",
+        "round_robin": False
     }
 }
 
@@ -87,7 +96,7 @@ def write_triangular_dzn(n: int):
     print(f"File '{INPUT_DATA_FILENAME}' written with {len(coords)} tuples.")
 
 
-def run_minizinc(model, solver, input_data_filename = INPUT_DATA_FILENAME, timeout = BASELINE_TIMEOUT):
+def run_minizinc(model, solver, input_data_filename, timeout):
     raw_output = None
     try:
         # Run minizinc and capture stdout
@@ -115,8 +124,10 @@ def run_minizinc(model, solver, input_data_filename = INPUT_DATA_FILENAME, timeo
         try:
             if unsat_solution_content == UNSATISFIABLE_SOLUTION_DEFAULT_MESSAGE:
                 print("The solution found is UNSATISFIABLE")
+                return {f"{solver}":{'sol':[],'time':300,'obj':None,'optimal':True}}
             elif unsat_solution_content == UNKNOWN_SOLUTION_DEFAULT_MESSAGE:
                 print("The solution HASN'T been found (UNKNOWN)")
+                return {f"{solver}":{'sol':[],'time':300,'obj':None,'optimal':False}}
             json_solution = json.loads(solution_content)
             json_solution["time"] = solution_time_elapsed
             return {f"{solver}":json_solution}
@@ -126,26 +137,62 @@ def run_minizinc(model, solver, input_data_filename = INPUT_DATA_FILENAME, timeo
 
     except subprocess.CalledProcessError as e:
         print(f"[ERROR] - MiniZinc execution failed:\n{e.stderr}")
-        return None
+        return {f"{solver}":{'sol':[],'time':300,'obj':None,'optimal':False}}
     except Exception as e:
         print(e)
         if raw_output:
             print("\n RAW OUTPUT:", raw_output)
-        return None
+        return {f"{solver}":{'sol':[],'time':300,'obj':None,'optimal':False}}
     
 
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
-        print("Usage: python run_minizinc.py <model.mzn> <n> <solver> <optional HAP_model.mzn>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Run the solver")
 
-    model, n, solver = sys.argv[1], sys.argv[2], sys.argv[3]
-    optional_hap_model = sys.argv[4] if len(sys.argv) > 4 else None
+    parser.add_argument(
+        "--version", 
+        default="v1", 
+        help="Version of the model"
+    )
+    parser.add_argument(
+        "--instance", 
+        type=int, 
+        default=6, 
+        help="Instance number (n)"
+    )
+    parser.add_argument(
+        "--time", 
+        type=int, 
+        default=300, 
+        help="Time limit in seconds"
+    )
+    parser.add_argument(
+        "--seed", 
+        help="Not implemented here"
+    )
+    parser.add_argument(
+        "--out", 
+        default=None, 
+        help="Not implemented here"
+    )
+
+    args = parser.parse_args()
+
+    time_limit = args.time * 1000
+    n = args.instance
+    exec_env = EXECUTION_CONFIGURATIONS[args.version]
+    round_robin = exec_env["round_robin"]
+    optional_hap_model = exec_env["hap_model"]
+    solver = exec_env["solver"]
+
     output_path = Path(f"../res/CP/{n}.json")
     partial_output_path = Path(f"./{PARTIAL_OUTPUT_FILENAME}")
-    write_tridimensional_round_robin(int(n))
 
-    result1 = run_minizinc(model, solver)
+    if round_robin:
+        write_tridimensional_round_robin(n)
+    else:
+        write_triangular_dzn(n)
+
+    result1 = run_minizinc(exec_env["first_model"], solver , INPUT_DATA_FILENAME, time_limit)
 
     if result1:
         print("Partial result:", result1)
@@ -156,7 +203,7 @@ if __name__ == "__main__":
     if optional_hap_model: # if an HAP optimization model was provided, continue the pipeline
         partial_output_path.write_text(partial_result)
     
-        result2 = run_minizinc("HAP_v1_model.mzn", solver, PARTIAL_OUTPUT_FILENAME, timeout=BASELINE_TIMEOUT-10-(partial_timer*1000))
+        result2 = run_minizinc(optional_hap_model, solver, PARTIAL_OUTPUT_FILENAME, timeout=time_limit-10-(partial_timer*1000))
 
         result2[solver]["time"] = result2[solver]["time"] + partial_timer
 

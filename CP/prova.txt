@@ -1,0 +1,1 @@
+python3 main.py --version v1 --instance 8 --time 300 --seed 2345 --out /CDMO/res/test/solver_DEFAULT_N.json
