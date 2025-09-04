@@ -27,6 +27,12 @@ EXECUTION_CONFIGURATIONS = {
         "hap_model": None,
         "solver": "gecode",
         "round_robin": False
+    },
+    "v4": {
+        "first_model": "naive_model.mzn",
+        "hap_model": None,
+        "solver": "gecode",
+        "round_robin": False
     }
 }
 
@@ -68,32 +74,19 @@ def write_tridimensional_round_robin(n:int):
     return calendar
                 
 
-def write_triangular_dzn(n: int):
+def write_triangular(n: int):
     if n % 2 != 0:
         raise ValueError("n must be an even integer")
-
-    # Collect non-zero indices (upper triangular, excluding diagonal)
-    coords = [(i+1, j+1) for i in range(n) for j in range(i+1, n)]
-
-    one_week = []
-    other_matches = []
-
-    for r, c in coords:
-        if c + r == n+1: #if a couple of indices are on the anti-diagonal of the matrix (when indices start from 1)
-            one_week.append((r,c))
-        else:
-            other_matches.append((r,c))
-
-    # Format as MiniZinc array of tuples
-    dzn_content = "matches=[|" + "|".join(f"{r},{c}" for r, c in one_week + other_matches) + f"|];\nn={n};"
-
-    # Ensure parent directory exists
+    #non-zero indices (upper triangular, excluding diagonal)
+    matches = [[i + 1, j + 1] for i in range(n) for j in range(i + 1, n)]
+    output_data = {
+        "n": n,
+        "matches": matches
+    }
     Path(INPUT_DATA_FILENAME).parent.mkdir(parents=True, exist_ok=True)
-    # Write to file
     with open(INPUT_DATA_FILENAME, "w") as f:
-        f.write(dzn_content)
-
-    print(f"File '{INPUT_DATA_FILENAME}' written with {len(coords)} tuples.")
+        json.dump(output_data, f)
+    print(f"File '{INPUT_DATA_FILENAME}' written with {len(matches)} matches.")
 
 
 def run_minizinc(model, solver, input_data_filename, timeout):
@@ -124,10 +117,10 @@ def run_minizinc(model, solver, input_data_filename, timeout):
         try:
             if unsat_solution_content == UNSATISFIABLE_SOLUTION_DEFAULT_MESSAGE:
                 print("The solution found is UNSATISFIABLE")
-                return {f"{solver}":{'sol':[],'time':300,'obj':None,'optimal':True}}
+                return {f"{solver}":{'sol':[],'time':150,'obj':None,'optimal':True}}
             elif unsat_solution_content == UNKNOWN_SOLUTION_DEFAULT_MESSAGE:
                 print("The solution HASN'T been found (UNKNOWN)")
-                return {f"{solver}":{'sol':[],'time':300,'obj':None,'optimal':False}}
+                return {f"{solver}":{'sol':[],'time':150,'obj':None,'optimal':False}}
             json_solution = json.loads(solution_content)
             json_solution["time"] = solution_time_elapsed
             return {f"{solver}":json_solution}
@@ -190,7 +183,7 @@ if __name__ == "__main__":
     if round_robin:
         write_tridimensional_round_robin(n)
     else:
-        write_triangular_dzn(n)
+        write_triangular(n)
 
     result1 = run_minizinc(exec_env["first_model"], solver , INPUT_DATA_FILENAME, time_limit)
 
