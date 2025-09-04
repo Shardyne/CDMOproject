@@ -177,7 +177,7 @@ if __name__ == "__main__":
     optional_hap_model = exec_env["hap_model"]
     solver = exec_env["solver"]
 
-    output_path = Path(f"../res/CP/{n}.json")
+    output_path = Path(f"../../res/CP/{n}.json")
     partial_output_path = Path(f"./{PARTIAL_OUTPUT_FILENAME}")
 
     if round_robin:
