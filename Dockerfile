@@ -15,13 +15,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     unzip \
     ca-certificates \
+    coinor-cbc \
     glpk-utils \
     libglpk40 \
     libc6 \
     libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
-
-#     coinor-cbc \
 
 # Install PuLP and numpy
 RUN pip install --no-cache-dir pulp numpy z3-solver
@@ -66,11 +65,30 @@ RUN set -eux; \
       echo \"[cvc5] no cvc5 binary found under /opt/cvc5\"; \
     fi
 
-# # Install MiniZinc binary bundle
-# RUN wget -O /tmp/minizinc.tgz https://github.com/MiniZinc/libminizinc/releases/latest/download/minizinc-bundle-linux-x86_64.tgz \
-#     && tar xzf /tmp/minizinc.tgz -C /opt/minizinc \
-#     && ln -s /opt/minizinc/bin/minizinc /usr/local/bin/minizinc
 
+# Install MiniZinc (x86_64 bundle)
+# Install MiniZinc (x86_64 bundle)
+RUN set -eux; \
+    apt-get update && apt-get install -y --no-install-recommends wget tar ca-certificates; \
+    rm -rf /var/lib/apt/lists/*; \
+    cd /tmp; \
+    MINIZINC_VER=2.9.3; \
+    wget -q "https://github.com/MiniZinc/MiniZincIDE/releases/download/${MINIZINC_VER}/MiniZincIDE-${MINIZINC_VER}-bundle-linux-x86_64.tgz"; \
+    tar -xzf "MiniZincIDE-${MINIZINC_VER}-bundle-linux-x86_64.tgz";
+
+RUN set -eux; \
+    apt-get update && apt-get install -y --no-install-recommends wget tar ca-certificates; \
+    rm -rf /var/lib/apt/lists/*; \
+    cd /tmp; \
+    MINIZINC_VER=2.9.3; \
+    wget -q "https://github.com/MiniZinc/MiniZincIDE/releases/download/${MINIZINC_VER}/MiniZincIDE-${MINIZINC_VER}-bundle-linux-x86_64.tgz"; \
+    tar -xzf "MiniZincIDE-${MINIZINC_VER}-bundle-linux-x86_64.tgz"; \
+    MINIZINC_DIR="/tmp/MiniZincIDE-${MINIZINC_VER}-bundle-linux-x86_64/bin"; \
+    chmod +x "$MINIZINC_DIR/minizinc"; \
+    ln -sf "$MINIZINC_DIR/minizinc" /usr/local/bin/minizinc; \
+    rm -f "MiniZincIDE-${MINIZINC_VER}-bundle-linux-x86_64.tgz"; \
+    echo "[minizinc] installed version:"; minizinc --version
+    
 # Copy project files
 COPY . /CDMO
 
@@ -87,4 +105,3 @@ VOLUME ["/CDMO/source"]
 
 # DEVELOPMENT script
 CMD ["tail", "-f", "/dev/null"] 
-
