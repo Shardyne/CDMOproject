@@ -89,7 +89,7 @@ def write_triangular(n: int):
     print(f"File '{INPUT_DATA_FILENAME}' written with {len(matches)} matches.")
 
 
-def run_minizinc(model, solver, input_data_filename, timeout):
+def run_minizinc(model, solver, input_data_filename, timeout, version):
     raw_output = None
     try:
         # Run minizinc and capture stdout
@@ -117,13 +117,13 @@ def run_minizinc(model, solver, input_data_filename, timeout):
         try:
             if unsat_solution_content == UNSATISFIABLE_SOLUTION_DEFAULT_MESSAGE:
                 print("The solution found is UNSATISFIABLE")
-                return {f"{solver}":{'sol':[],'time':150,'obj':None,'optimal':True}}
+                return {f"{solver}_{version}":{'sol':[],'time':300,'obj':None,'optimal':True}}
             elif unsat_solution_content == UNKNOWN_SOLUTION_DEFAULT_MESSAGE:
                 print("The solution HASN'T been found (UNKNOWN)")
-                return {f"{solver}":{'sol':[],'time':150,'obj':None,'optimal':False}}
+                return {f"{solver}_{version}":{'sol':[],'time':300,'obj':None,'optimal':False}}
             json_solution = json.loads(solution_content)
             json_solution["time"] = solution_time_elapsed
-            return {f"{solver}":json_solution}
+            return {f"{solver}_{version}":json_solution}
         except json.JSONDecodeError:
             print("[WARN] - Output is not valid JSON, returning raw text")
             return "ERROR JSON PARSE"
@@ -172,7 +172,8 @@ if __name__ == "__main__":
 
     time_limit = args.time * 1000
     n = args.instance
-    exec_env = EXECUTION_CONFIGURATIONS[args.version]
+    version = args.version
+    exec_env = EXECUTION_CONFIGURATIONS[version]
     round_robin = exec_env["round_robin"]
     optional_hap_model = exec_env["hap_model"]
     solver = exec_env["solver"]
@@ -185,20 +186,21 @@ if __name__ == "__main__":
     else:
         write_triangular(n)
 
-    result1 = run_minizinc(exec_env["first_model"], solver , INPUT_DATA_FILENAME, time_limit)
+    result1 = run_minizinc(exec_env["first_model"], solver , INPUT_DATA_FILENAME, time_limit, version)
 
     if result1:
         print("Partial result:", result1)
 
-    partial_result = "{" + f"\"sol\":{result1[solver]['sol']},\n\"n\":{n}" + "}"
-    partial_timer = result1[solver]["time"]
+    partial_result = "{" + f"\"sol\":{result1[f"{solver}_{version}"]['sol']},\n\"n\":{n}" + "}"
+    partial_timer = result1[f"{solver}_{version}"]["time"]
 
-    if optional_hap_model: # if an HAP optimization model was provided, continue the pipeline
+    # if an HAP optimization model was provided, continue the pipeline
+    if optional_hap_model and len(result1[f"{solver}_{version}"]["sol"]) != 0:
         partial_output_path.write_text(partial_result)
     
-        result2 = run_minizinc(optional_hap_model, solver, PARTIAL_OUTPUT_FILENAME, timeout=time_limit-10-(partial_timer*1000))
+        result2 = run_minizinc(optional_hap_model, solver, PARTIAL_OUTPUT_FILENAME, time_limit-10-(partial_timer*1000), version)
 
-        result2[solver]["time"] = result2[solver]["time"] + partial_timer
+        result2[f"{solver}_{version}"]["time"] = result2[f"{solver}_{version}"]["time"] + partial_timer
 
         if output_path.exists():
             existing_data = json.loads(output_path.read_text())

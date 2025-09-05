@@ -66,16 +66,7 @@ RUN set -eux; \
     fi
 
 
-# Install MiniZinc (x86_64 bundle)
-# Install MiniZinc (x86_64 bundle)
-RUN set -eux; \
-    apt-get update && apt-get install -y --no-install-recommends wget tar ca-certificates; \
-    rm -rf /var/lib/apt/lists/*; \
-    cd /tmp; \
-    MINIZINC_VER=2.9.3; \
-    wget -q "https://github.com/MiniZinc/MiniZincIDE/releases/download/${MINIZINC_VER}/MiniZincIDE-${MINIZINC_VER}-bundle-linux-x86_64.tgz"; \
-    tar -xzf "MiniZincIDE-${MINIZINC_VER}-bundle-linux-x86_64.tgz";
-
+# Install MiniZinc (available only x86_64 bundle)
 RUN set -eux; \
     apt-get update && apt-get install -y --no-install-recommends wget tar ca-certificates; \
     rm -rf /var/lib/apt/lists/*; \
