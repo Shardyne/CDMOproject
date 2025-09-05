@@ -1,0 +1,14 @@
+{
+  "GLPK_i<j_balanced_dual_cuts": {
+    "time": 0,
+    "optimal": true,
+    "obj": 0.0,
+    "sol": []
+  },
+  "GLPK_i<j_balanced_A_dual_cuts": {
+    "time": 0,
+    "optimal": true,
+    "obj": 0.0,
+    "sol": []
+  }
+}

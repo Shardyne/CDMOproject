@@ -1,0 +1,8 @@
+{
+  "GLPK_base_feasible_dual_clique": {
+    "time": 0,
+    "optimal": true,
+    "obj": null,
+    "sol": []
+  }
+}

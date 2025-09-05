@@ -3,6 +3,58 @@ import argparse, json, math, os, sys, time, random
 from collections import defaultdict
 import pulp
 
+def check_warmstart_feasibility(prob, tol=1e-6, DEBUG=False):
+    """
+    Check if initial values (set via setInitialValue) satisfy constraints.
+    LHS = Left Hand Side → is the value calculated from the sum of the variables 
+    in the constraint, using the initial values.
+    RHS = Right Hand Side → is the constant term of the constraint.
+    """
+    violated = []
+    for cname, c in prob.constraints.items():
+        if DEBUG:
+            print("DEBUG check:", cname)
+        lhs = 0.0
+        for v, coeff in c.items():
+            if hasattr(v, "varValue"):
+                val = getattr(v, "varValue")
+                if val != 0:
+                    if DEBUG:
+                        print("DEBUG check:", v, "->", val)
+                if val is None:
+                    val = 0
+            else:
+                if DEBUG:
+                    print("DEBUG check:", v, "->", val)
+                val = 0
+            lhs += coeff * val
+
+        rhs = -c.constant
+        sense = c.sense  # -1 <=, 0 ==, 1 >=
+
+        ok = True
+        if sense == -1 and lhs - rhs > tol:
+            ok = False
+        elif sense == 0 and abs(lhs - rhs) > tol:
+            ok = False
+        elif sense == 1 and rhs - lhs > tol:
+            ok = False
+
+        if not ok:
+            violated.append((cname, lhs, rhs, sense))
+
+    if violated:
+        print(" Vincoli violati dal warm start:")
+        for cname, lhs, rhs, sense in violated:
+            symbol = {0: "==", -1: "<=", 1: ">="}[sense]
+            print(f" - {cname}: LHS={lhs:.3f} {symbol} RHS={rhs:.3f}")
+    else:
+        print(" Tutti i vincoli rispettati dal warm start.")
+
+    return violated
+
+
+
 def compute_circle_pairs(n: int):
     pairs = []
     for i in range(1, n//2 + 1):
@@ -27,8 +79,9 @@ def circle_method_pairs(n):
         others = [others[-1]] + others[:-1]
     return schedule
 
-def balanced_circle_method_pairs(n, half:bool = False):
+def balanced_circle_method_pairs(n, half:bool = False, seed: int = 0):
     assert n % 2 == 0 and n >= 4
+    random.seed(seed)
     w, p = n - 1, n // 2
     fixed = 1
     others = list(range(2, n+1))
@@ -54,9 +107,14 @@ def balanced_circle_method_pairs(n, half:bool = False):
         others = [others[-1]] + others[:-1]
     return schedule
 
-def build_model(n: int, solver: str = "CBC", time_limit: int = 300, seed: int = 0,
-                presolve: bool = False, objective: str = "feasible",
-                version: str = "base", sym_flags: str = "", warm_start: str = ""):
+def build_model(
+    n: int, solver: str = "CBC", 
+    time_limit: int = 300, seed: int = 0,
+    presolve: bool = False, objective: str = "feasible",
+    version: str = "base", sym_flags: str = "", 
+    warm_start: str = "", DEBUG: bool = False,
+    cuts: bool = False
+    ):
     """
     build_model con opzione sym_flags: stringa che può contenere le lettere
     'A','B','C','D' per abilitare rispettivamente i symmetry-breaking:
@@ -235,6 +293,20 @@ def build_model(n: int, solver: str = "CBC", time_limit: int = 300, seed: int = 
             wp = W[idx + 1]
             prob += signature_week[w] <= signature_week[wp], f"order_weeks_{w}_{wp}"
 
+    # (D) Canonical ordering of periods globally: signature_period[p] <= signature_period[p+1]
+    if 'D' in flags:
+        signature_period = {}
+        for p in P:
+            signature_period[p] = pulp.LpVariable(f"sig_p_{p}", lowBound=0, cat=pulp.LpContinuous)
+            if version == "i<j":
+                prob += signature_period[p] == pulp.lpSum((i + j) * x[(w,p,i,j)] for (i,j) in pairs for w in W), f"define_sig_p_{p}"
+            else:
+                prob += signature_period[p] == pulp.lpSum((i + j) * (x[(w,p,i,j)] + x[(w,p,j,i)]) for (i,j) in pairs for w in W), f"define_sig_p_{p}"
+        for idx in range(len(P) - 1):
+            p = P[idx]
+            pp = P[idx + 1]
+            prob += signature_period[p] <= signature_period[pp], f"order_periods_{p}_{pp}"
+
     # ---------- WARM START HANDLING ----------
     # warm_start parameter accepted values:
     #   "" -> no warm start
@@ -272,7 +344,7 @@ def build_model(n: int, solver: str = "CBC", time_limit: int = 300, seed: int = 
             if (ws == "bal_full"):
                 schedule = balanced_circle_method_pairs(n)  # dict: week -> list of (teamA,teamB)
             else:
-                schedule = balanced_circle_method_pairs(n, half=True)  # dict: week -> list of (teamA,teamB)
+                schedule = balanced_circle_method_pairs(n, half=True, seed=seed)  # dict: week -> list of (teamA,teamB)
 
             for wk, pairs_temp in schedule.items():
                 for per_idx, (a, b) in enumerate(pairs_temp, start=1):
@@ -308,41 +380,64 @@ def build_model(n: int, solver: str = "CBC", time_limit: int = 300, seed: int = 
                             h[(wk, per_idx, i, j)].setInitialValue(0)
     end_warm = time.time()
     time_warm = end_warm - start_warm
+
+    # print("Sample keys from x:", list(x.keys())[:20])
+    if DEBUG:
+        print("key finish------------------")
+        print("Warm start: variabili settate a 1")
+        for key, var in x.items():
+            if getattr(var, "varValue", 0) == 1:
+                print(key)
+        count_ones = sum(1 for var in x.values() if getattr(var, "varValue", 0) == 1)
+        print("Totale variabili settate a 1 nel warm start:", count_ones)
+
+        violated = check_warmstart_feasibility(prob, DEBUG=DEBUG)
+
+
+
     # ---------------------------
     # Solve
-    # String of 262626, is illegal for integer parameter randomSeed value remains 1234567
-    # allowableGap - ratioGap (, gapRel=0.01)
-    # maxSolutions was changed from 2147483647 to 1
-    # Option for gomoryCuts changed from ifmove to on
-    # Option for knapsackCuts changed from ifmove to on
-    # "cutoff {n(n-1)} MaxSolutions 1"
     # ---------------------------
 
     time_mod = time_limit
     if do_warm_start:
         time_mod -= time_warm
 
-    if solver == "HiGHS":
-        solver = pulp.HiGHS_CMD(
-            msg=True,
-            timeLimit=math.ceil(time_mod),
-            threads=1,
-            warmStart=do_warm_start
-        )
-    elif solver == "GLPK":
-        solver = pulp.GLPK_CMD(
-            msg=True,
-            timeLimit=math.ceil(time_mod),
-            options=["--seed=12345"]
-        )
+    # flag utili
+    # ---------------------------
+    # glpsol --help
+    # --gomory --cuts     
+    # --simplex (--primal defoult) --dual 
+    # ---------------------------
+
+    if solver == "GLPK":
+        if cuts:
+            solver = pulp.GLPK_CMD(
+                msg=DEBUG,
+                timeLimit=math.ceil(time_mod),
+                options=["--seed", f"{seed}", "--dual", "--cuts"]
+            )
+        else:
+            solver = pulp.GLPK_CMD(
+                msg=DEBUG,
+                timeLimit=math.ceil(time_mod),
+                options=["--seed", f"{seed}", "--dual"]
+            )
     else:
+        # flag utili
+        # ---------------------------
+        # allowableGap - ratioGap (, gapRel=0.01)
+        # "cutoff {n(n-1)} MaxSolutions 1" 
+        # ---------------------------
         solver = pulp.PULP_CBC_CMD(
-            msg=True, 
+            msg=DEBUG, 
             timeLimit=time_mod, 
             threads=1, 
             presolve=presolve, 
-            warmStart=do_warm_start, 
-            options=[f"RandomS {seed}"]
+            warmStart= do_warm_start, 
+            options=[f"RandomS {seed}"],
+            # keepFiles =True,
+            # logPath  = "source/MIP/log/log.log"
             )
     start = time.time()
     status_code = prob.solve(solver)
@@ -502,36 +597,51 @@ def build_model(n: int, solver: str = "CBC", time_limit: int = 300, seed: int = 
 
 if __name__ == '__main__':
     # simple driver: iterate combinations (nota: passiamo presolve correttamente)
-    for version,objective in [("i<j","balanced"), ("base","feasible")]: # ("i<j","balanced"), ("base","feasible") "base", ,"i<j",#"feasible","balanced",
-        for sym_flags in ["", "A"]: # "BC", "B", "C", "A", "AC" 
-            for seed in [26, 42 ]:#262626, 948486489 , 1234567, 5656565, 0 , 1756566010, 26, 42, 878641, 424242
-                for presolve in [True]:
-                    for warm_start in ["week1","bal_full"]: # "week1","bal_full", "half_full"
-                        for n in range(8, 13, 2):
-                            for solver in [ "GLPK"]: # "CBC" , "GLPK", "HiGHS"
-                                res_dir = os.path.join(os.path.dirname(__file__), "..", "..", "res", "MIP","dump",f"{solver}",f"{version}_{objective}",f"{warm_start}") # , f"{solver}",f"{warm_start}_{objective}"
+    bests = [
+        ("CBC","base","feasible",42,True,"","week1",False),
+        ("CBC","i<j","balanced",878641,True,"","week1",False),
+        ("GLPK","base","feasible",26,True,"B","",False),
+        ("GLPK","i<j","balanced",26,True,"A","",True)
+        ]
+    for solver,version,objective,seed,presolve,sym_flags,warm_start,cuts in bests:
+                        for n in range(4, 19, 2):
+                                res_dir = os.path.join(os.path.dirname(__file__), "..", "..", "res", "MIP" )
                                 os.makedirs(res_dir, exist_ok=True)
-                                out_path = ""
-                                if solver == "GLPK":
-                                    out_path = os.path.join(res_dir, f"{n}.json")
-                                else:
-                                    out_path = os.path.join(res_dir, f"{version}_{presolve}_{seed}_{n}.json")
+                                out_path = os.path.join(res_dir, f"{n}.json")
                                 global_start = time.time()
                                 try:
                                     result, meta = build_model(n, solver = solver, time_limit=300, seed=seed,
                                                                 presolve=presolve, version=version, sym_flags=sym_flags,
-                                                                objective=objective, warm_start=warm_start)
+                                                                objective=objective, warm_start=warm_start, cuts=cuts)
                                 except Exception as e:
                                     print(f"[ERROR] n={n} v={version} obj={objective} seed={seed} presolve={presolve}: {e}")
                                     result = {"time":300,"optimal":False,"obj":None,"sol":[]}
                                     meta = {"pulp_status":"error","runtime_sec":0.0}
                                 global_end = time.time()
                                 total_runtime = global_end - global_start
-        
-                                key = f"{solver}_{version}_{objective}_{warm_start}"
+
+                                key = ""
+                                if solver == "CBC":
+                                    key = f"{solver}_{version}_{objective}_{warm_start}_{sym_flags}_{seed}"
+                                else:
+                                    if cuts:
+                                        key = f"{solver}_{version}_{objective}_dual_cuts_{sym_flags}_{seed}"
+                                    else:
+                                        key = f"{solver}_{version}_{objective}_dual_{sym_flags}_{seed}"
                                 payload = { key: result }
+
+                                old_data = {}
+                                if os.path.exists(out_path):
+                                    try:
+                                        with open(out_path, "r") as f:
+                                            old_data = json.load(f)
+                                            if not isinstance(old_data, dict):
+                                                old_data = {}
+                                    except (json.JSONDecodeError, ValueError):
+                                        old_data = {}
+                                old_data.update(payload)
                                 with open(out_path, "w") as f:
-                                    json.dump(payload, f, indent=2)
+                                    json.dump(old_data, f, indent=2)
 
                                 print(f"[DONE] n={n} approach= {key} presolve={presolve} seed={seed} -> {out_path}")
                                 print(f"Status: {meta['pulp_status']} | optimal={result['optimal']} | obj={result['obj']}")

@@ -16,6 +16,7 @@ def analyze_results(res_dir):
             n = int(n_with_ext.replace(".json", ""))
         except ValueError:
             # Nome file non conforme
+            version, presolve, seed, n_with_ext = "", "", "", ""
             continue
 
         path = os.path.join(res_dir, fname)
@@ -96,3 +97,4 @@ if __name__ == "__main__":
         print_table(report, warm_start, objective)
     else:
         print("Nessun risultato valido trovato.")
+        print_table(report, warm_start, objective)

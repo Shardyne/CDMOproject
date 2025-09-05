@@ -1,0 +1,14 @@
+{
+  "GLPK_base_feasible": {
+    "time": 300,
+    "optimal": false,
+    "obj": null,
+    "sol": []
+  },
+  "GLPK_base_feasible_simplex": {
+    "time": 300,
+    "optimal": false,
+    "obj": null,
+    "sol": []
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "GLPK_i<j_balanced_A_dual": {
+    "time": 0,
+    "optimal": true,
+    "obj": 0.0,
+    "sol": []
+  }
+}

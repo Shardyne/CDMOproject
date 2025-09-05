@@ -1,0 +1,8 @@
+{
+  "GLPK_base_feasible_B_dual": {
+    "time": 300,
+    "optimal": false,
+    "obj": null,
+    "sol": []
+  }
+}

@@ -46,3 +46,30 @@
 # print("which highs:", shutil.which("highs"))
 # solver = pulp.HiGHS(msg=False)
 # print("PuLP says available():", solver.available(), " defaultPath():", solver.defaultPath())
+
+
+    # # Apply initial values to the pulp variables y[(w,k,per)]
+    # for (w, k) in all_slots:
+    #     for per in P:
+    #         var = y[(w,k,per)]
+    #         val = 1 if initial_map[(w, k)] == per and (w, k) in slots_to_set else 0
+    #         var.setInitialValue(val)
+
+
+# # Controlla se il file esiste
+# if os.path.exists(out_path):
+#     # Leggi il contenuto esistente
+#     with open(out_path, 'r') as file:
+#         try:
+#             contenuto_esistente = json.load(file)
+#         except json.JSONDecodeError:
+#             contenuto_esistente = {}  # Se il file è vuoto o non valido, inizia con un dizionario vuoto
+# else:
+#     contenuto_esistente = {}
+
+# # Aggiorna il contenuto esistente con il nuovo contenuto
+# contenuto_esistente.update(nuovo_contenuto)
+
+# # Scrivi il contenuto aggiornato nel file
+# with open(out_path, 'w') as file:
+#     json.dump(contenuto_esistente, file, indent=4)

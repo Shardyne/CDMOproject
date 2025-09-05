@@ -11,7 +11,17 @@ http://www.decom.ufop.br/haroldo/files/cbcCommandLine.pdf
 feasibility_pump:
 https://www.dei.unipd.it/~fisch/papers/feasibility_pump.pdf
 
+how to warm_start:
+https://coin-or.github.io/pulp/guides/how_to_mip_start.html
+
+ltro solver usato
+https://most.ccib.rutgers.edu/glpk.pdf
+
 Se non settato correttamente il seed usato è -1 che corrsiponde ad uno statico:
+String of 262626, is illegal for integer parameter randomSeed value remains 1234567
+Option for gomoryCuts changed from ifmove to on
+Option for knapsackCuts changed from ifmove to on
+maxSolutions was changed from 2147483647 to 1
 options=[f"RandomS 1234567"]
 impostandolo a 0 invece si usa il tempo per generare un tempo casuale
 Visto hce nella documentazione non è definito esattamente il comportamento, questo è stato dedotto dal fatto che usare esplicitamente come RandomS 1234567 equivaleva alle prestazioni usando il defoul -1.

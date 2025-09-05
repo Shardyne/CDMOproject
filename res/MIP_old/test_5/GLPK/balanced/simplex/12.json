@@ -1,0 +1,8 @@
+{
+  "GLPK_i<j_balanced_simplex": {
+    "time": 300,
+    "optimal": false,
+    "obj": 0.0,
+    "sol": []
+  }
+}

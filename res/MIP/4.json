@@ -1,0 +1,25 @@
+{
+  "CBC_base_feasible_week1__42": {
+    "time": 10,
+    "optimal": true,
+    "obj": null,
+    "sol": []
+  },
+  "CBC_preprocessing_balanced_random_half_42": {
+    "time": 0,
+    "optimal": true,
+    "obj": 0,
+    "sol": [
+      [
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null
+      ]
+    ]
+  }
+}
