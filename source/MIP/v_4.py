@@ -76,7 +76,8 @@ def build_model_with_permutations(n: int,
                                   warm_start: str = "",
                                   objective: str = "feasible",
                                   DEBUG: bool = False,
-                                  solver: str = "CBC"
+                                  solver: str = "CBC",
+                                  cuts: bool = False
                                   ):
     """
     Build and solve. Returns (result, meta).
@@ -252,11 +253,19 @@ def build_model_with_permutations(n: int,
     # --simplex (--primal defoult) --dual 
     # ---------------------------
     if solver == "GLPK":
-        solver = pulp.GLPK_CMD(
-            msg=DEBUG,
-            timeLimit=math.ceil(adjusted_time_limit),
-            options=["--seed", f"{seed}", "--dual"]
-        )
+        if cuts:
+            solver = pulp.GLPK_CMD(
+                msg=DEBUG,
+                timeLimit=math.ceil(adjusted_time_limit),
+                options=["--seed", f"{seed}", "--dual", "--cuts"]
+            )
+        else:
+            solver = pulp.GLPK_CMD(
+                msg=DEBUG,
+                timeLimit=math.ceil(adjusted_time_limit),
+                options=["--seed", f"{seed}", "--dual"]
+            )
+
     else:
         # flag utili
         # ---------------------------
@@ -325,24 +334,24 @@ def build_model_with_permutations(n: int,
 if __name__ == '__main__':
     # simple driver: iterate combinations (nota: passiamo presolve correttamente)
     bests = [
-        ("CBC","balanced",True,42,"random_half"),
-        ("CBC","feasible",True,26,"week1"),
-        ("GLPK","balanced",True,26,""),
-        ("GLPK","feasible",True,26,""),
+        (14,"CBC","balanced",True,42,"random_half"),
+        (16,"CBC","feasible",True,26,"week1"),
+        (12,"GLPK","balanced",True,26,""),
+        (12,"GLPK","feasible",True,26,""),
     ]
-    for solver, objective, presolve, seed, warm_start in bests:
-                            for n in range(4, 19, 2):
+    for n,solver, objective, presolve, seed, warm_start in bests:
+                            for nn in range(4, n+1, 2):
                                 res_dir = os.path.join(os.path.dirname(__file__), "..", "..", "res", "MIP")
                                 os.makedirs(res_dir, exist_ok=True)
-                                out_path = os.path.join(res_dir, f"{n}.json")
+                                out_path = os.path.join(res_dir, f"{nn}.json")
                                 global_start = time.time()
                                 try:
                                     result, meta = build_model_with_permutations(
-                                        n=n, time_limit=300, seed=seed,
+                                        n=nn, time_limit=300, seed=seed,
                                               presolve=presolve, warm_start=warm_start,
                                               objective=objective, solver=solver)
                                 except Exception as e:
-                                    print(f"[ERROR] n={n} v=preprocessing obj={objective} seed={seed} presolve={presolve}: {e}")
+                                    print(f"[ERROR] n={nn} v=preprocessing obj={objective} seed={seed} presolve={presolve}: {e}")
                                     result = {"time":300,"optimal":False,"obj":None,"sol":[]}
                                     meta = {"pulp_status":"error","runtime_sec":0.0}
                                 global_end = time.time()
@@ -368,7 +377,7 @@ if __name__ == '__main__':
                                 with open(out_path, "w") as f:
                                     json.dump(old_data, f, indent=2)
 
-                                print(f"[DONE] n={n} approach= {key} presolve={presolve} seed={seed} -> {out_path}")
+                                print(f"[DONE] n={nn} approach= {key} presolve={presolve} seed={seed} -> {out_path}")
                                 print(f"Status: {meta['pulp_status']} | optimal={result['optimal']} | obj={result['obj']}")
                                 print(f"Runtime (total, incl. 'presolve') = {total_runtime:.2f}s (time field written: {result['time']})")
 

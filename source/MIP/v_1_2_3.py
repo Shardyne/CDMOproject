@@ -598,23 +598,23 @@ def build_model(
 if __name__ == '__main__':
     # simple driver: iterate combinations (nota: passiamo presolve correttamente)
     bests = [
-        ("CBC","base","feasible",42,True,"","week1",False),
-        ("CBC","i<j","balanced",878641,True,"","week1",False),
-        ("GLPK","base","feasible",26,True,"B","",False),
-        ("GLPK","i<j","balanced",26,True,"A","",True)
+        (14,"CBC","base","feasible",42,True,"","week1",False),
+        (14,"CBC","i<j","balanced",878641,True,"","week1",False),
+        (12,"GLPK","base","feasible",26,True,"B","",False),
+        (10,"GLPK","i<j","balanced",26,True,"A","",True)
         ]
-    for solver,version,objective,seed,presolve,sym_flags,warm_start,cuts in bests:
-                        for n in range(4, 19, 2):
+    for n,solver,version,objective,seed,presolve,sym_flags,warm_start,cuts in bests:
+                        for nn in range(4, n+1, 2):
                                 res_dir = os.path.join(os.path.dirname(__file__), "..", "..", "res", "MIP" )
                                 os.makedirs(res_dir, exist_ok=True)
-                                out_path = os.path.join(res_dir, f"{n}.json")
+                                out_path = os.path.join(res_dir, f"{nn}.json")
                                 global_start = time.time()
                                 try:
-                                    result, meta = build_model(n, solver = solver, time_limit=300, seed=seed,
+                                    result, meta = build_model(nn, solver = solver, time_limit=300, seed=seed,
                                                                 presolve=presolve, version=version, sym_flags=sym_flags,
                                                                 objective=objective, warm_start=warm_start, cuts=cuts)
                                 except Exception as e:
-                                    print(f"[ERROR] n={n} v={version} obj={objective} seed={seed} presolve={presolve}: {e}")
+                                    print(f"[ERROR] n={nn} v={version} obj={objective} seed={seed} presolve={presolve}: {e}")
                                     result = {"time":300,"optimal":False,"obj":None,"sol":[]}
                                     meta = {"pulp_status":"error","runtime_sec":0.0}
                                 global_end = time.time()
@@ -643,6 +643,6 @@ if __name__ == '__main__':
                                 with open(out_path, "w") as f:
                                     json.dump(old_data, f, indent=2)
 
-                                print(f"[DONE] n={n} approach= {key} presolve={presolve} seed={seed} -> {out_path}")
+                                print(f"[DONE] n={nn} approach= {key} presolve={presolve} seed={seed} -> {out_path}")
                                 print(f"Status: {meta['pulp_status']} | optimal={result['optimal']} | obj={result['obj']}")
                                 print(f"Runtime (total, incl. 'presolve') = {total_runtime:.2f}s (time field written: {result['time']})")

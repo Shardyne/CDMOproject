@@ -15,7 +15,7 @@ def analyze_results(res_dir):
             version, presolve, seed, n_with_ext = fname.split("_")
             n = int(n_with_ext.replace(".json", ""))
         except ValueError:
-            # Nome file non conforme
+            # Non-compliant file name
             version, presolve, seed, n_with_ext = "", "", "", ""
             continue
 
@@ -30,7 +30,7 @@ def analyze_results(res_dir):
                 stats[key]["count"] += 1
                 stats[key]["times"].append(time_val)
 
-    # Calcola statistiche
+    # Compute statistics
     report = {}
     for key, vals in stats.items():
         n, presolve, version = key
@@ -49,14 +49,14 @@ def analyze_results(res_dir):
     return report
 
 def print_table(report, warm_start, objective):
-    # Ordini desiderati
+    # Desired orders
     version_order = {"base": 0, "i<j": 1}
-    presolve_order = {"True": 0, "False": 1}  # attenzione: presolve arriva come stringa
+    presolve_order = {"True": 0, "False": 1}  # note: presolve comes as a string
 
     def sort_key(item):
         (n, presolve, version), _ = item
-        v_rank = version_order.get(version, 99)     # 99 se non trovato
-        p_rank = presolve_order.get(presolve, 99)  # idem
+        v_rank = version_order.get(version, 99)     # 99 if not found
+        p_rank = presolve_order.get(presolve, 99)  # same
         return (v_rank, p_rank, n)
 
     # Meta-header
@@ -77,15 +77,15 @@ def print_table(report, warm_start, objective):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Uso: python analyze.py <cartella_risultati>")
+        print("Usage: python analyze.py <results_folder>")
         sys.exit(1)
 
     res_dir = sys.argv[1]
     if not os.path.isdir(res_dir):
-        print(f"Errore: {res_dir} non è una cartella valida.")
+        print(f"Error: {res_dir} is not a valid folder.")
         sys.exit(1)
 
-    # Estrai warm_start e objective dall’ultima parte del path
+    # Extract warm_start and objective from the last part of the path
     last_part = os.path.basename(os.path.normpath(res_dir))
     if "_" in last_part:
         warm_start, objective = last_part.split("_", 1)
@@ -96,5 +96,5 @@ if __name__ == "__main__":
     if report:
         print_table(report, warm_start, objective)
     else:
-        print("Nessun risultato valido trovato.")
+        print("No valid results found.")
         print_table(report, warm_start, objective)

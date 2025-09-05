@@ -44,5 +44,51 @@
         null
       ]
     ]
+  },
+  "GLPK_preprocessing_balanced_dual_26": {
+    "time": 0,
+    "optimal": true,
+    "obj": 0,
+    "sol": [
+      [
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null
+      ]
+    ]
+  },
+  "GLPK_base_feasible_dual_B_26": {
+    "time": 0,
+    "optimal": true,
+    "obj": null,
+    "sol": []
+  },
+  "GLPK_preprocessing_feasible_dual_26": {
+    "time": 0,
+    "optimal": true,
+    "obj": null,
+    "sol": [
+      [
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null
+      ]
+    ]
+  },
+  "GLPK_i<j_balanced_dual_cuts_A_26": {
+    "time": 0,
+    "optimal": true,
+    "obj": 0.0,
+    "sol": []
   }
 }
