@@ -21,5 +21,28 @@
         null
       ]
     ]
+  },
+  "CBC_i<j_balanced_week1__878641": {
+    "time": 0,
+    "optimal": true,
+    "obj": 0.0,
+    "sol": []
+  },
+  "CBC_preprocessing_feasible_week1_26": {
+    "time": 0,
+    "optimal": true,
+    "obj": null,
+    "sol": [
+      [
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null
+      ]
+    ]
   }
 }
