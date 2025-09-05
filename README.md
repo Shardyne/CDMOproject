@@ -1,51 +1,150 @@
 # CDMOproject
 Project for the Combinatorial Decision Making &amp; Optimization course of the MAster's Degree in Artificial Intelligence of UniBo
 
-README (snippet con comandi docker)
+# Docker usage (quick guide)
 
-# STS Docker image – usage
+This README explains how to build and run the project image using **only Docker CLI**. It documents the available flags that the container entrypoint accepts, shows concrete examples, and lists the available versions and which version token to pass when you want to run a specific experiment.
 
-## Build image
-From project root:
+All commands assume you run them from the project root where the `Dockerfile` and the `source/` directory live.
+
+---
+
+## Build the Docker image
+
+Build the image once (from project root):
+
 ```bash
 docker build -t sts-container .
-````
-
-Mount volumes so that host `source/` and `res/` are used inside container:
-
-* host `./source` -> container `/CDMO/source`
-* host `./res`    -> container `/CDMO/res`
-
-## Run ALL models (batch)
-
-No args: container runs all solvers (CP,SAT,SMT,MIP) with default n=6 and saves to `res/test/`:
-
-```bash
-docker run --rm -v $(pwd)/source:/CDMO/source -v $(pwd)/res:/CDMO/res sts-container
 ```
 
-## Run single model (positional)
+---
+
+## Mount host folders into the container
+
+You should mount your working `source/` and `res/` directories into the container so the container uses your code and writes outputs back to the host:
 
 ```bash
-docker run --rm -v $(pwd)/source:/CDMO/source -v $(pwd)/res:/CDMO/res sts-container MIP v1 8 300 n res/person_test/MIP_8.json
+# Unix / macOS (bash / zsh)
+-v "$(pwd)/source:/CDMO/source" -v "$(pwd)/res:/CDMO/res"
 ```
 
-* MODEL = `MIP` (case-insensitive)
-* VERSION = `v1` (optional)
-* N = 8 (optional)
-* TIME = 300 (optional)
-* SEED = `y` or `n` (optional)
-* OUT = output json path (optional)
+On PowerShell use `${PWD}` instead of `$(pwd)`.
 
-## Run single model (flags)
+---
+
+## Entrypoint behavior & supported flags
+
+The container entrypoint accepts two styles of invocation:
+
+1. **No arguments (batch mode)**
+   If you run the container **without passing any arguments**, the entrypoint will sequentially run every approach:
+   `CP`, `SMT`, `MIP` — invoking `python /CDMO/source/<APPROACH>/main.py` for each approach **with default parameters**.
+
+2. **Single-approach mode (positional or flag style)**
+   If you pass arguments, the entrypoint will run a single approach only.
+
+   * **Positional form**:
+
+     ```bash
+     docker run --rm -v "$(pwd)/source:/CDMO/source" -v "$(pwd)/res:/CDMO/res" \
+       sts-container MIP 8 v1
+     ```
+
+     This runs `python /CDMO/source/MIP/main.py --instance 8 --version v1`.
+
+   * **Flag form**:
+
+     ```bash
+     docker run --rm -v "$(pwd)/source:/CDMO/source" -v "$(pwd)/res:/CDMO/res" \
+       sts-container -- --approach MIP --n 8 --version v1
+     ```
+
+     This runs the same `main.py` and forwards `--n 8 --version v1`.
+
+### Supported flags (forwarded by the entrypoint)
+
+* `--approach <APPROACH>` — one of `CP`, `SMT`, `MIP` (case-insensitive).
+* `--n` or `--instance <int>` — instance size (even integer).
+* `--version <str>` — version token (e.g. `v1`, `v3`, `v4`).
+* `-h`, `--help` — show help (entrypoint prints usage).
+
+
+---
+
+## Examples
+
+### 1) Run everything (batch mode)
+
+Runs all four approaches (`CP`, `SMT`, `MIP`) sequentially, no parameters:
 
 ```bash
-docker run --rm -v $(pwd)/source:/CDMO/source -v $(pwd)/res:/CDMO/res sts-container -- --model MIP --version v1 --n 8 --time 300 --seed n --out res/person_test/MIP_8.json
+docker run --rm \
+  -v "$(pwd)/source:/CDMO/source" \
+  -v "$(pwd)/res:/CDMO/res" \
+  sts-container
 ```
 
-## Notes
+### 2) Run only MIP with positional args (n=8, version=v1)
 
-* Edit code locally under `source/` and re-run container (mount keeps it live).
-* The entrypoint will run `source/solver.py` on the output directory after each batch or single execution.
+Positional style:
 
+```bash
+docker run --rm \
+  -v "$(pwd)/source:/CDMO/source" \
+  -v "$(pwd)/res:/CDMO/res" \
+  sts-container MIP 8 v1
+```
 
+This calls `/CDMO/source/MIP/main.py --instance 8 --version v1`.
+
+### 3) Run only MIP with flag args (identical behavior)
+
+Flag style (note the `--` after the image):
+
+```bash
+docker run --rm \
+  -v "$(pwd)/source:/CDMO/source" \
+  -v "$(pwd)/res:/CDMO/res" \
+  sts-container -- --approach MIP --n 8 --version v1
+```
+
+### 4) Enter an interactive shell in the container (dev debugging)
+
+If you want a shell inside the image (mounting your source/res):
+
+```bash
+docker run --rm -it \
+  -v "$(pwd)/source:/CDMO/source" \
+  -v "$(pwd)/res:/CDMO/res" \
+  sts-container /bin/bash
+```
+
+Then you can run commands manually inside the container, e.g.:
+
+```bash
+python /CDMO/source/MIP/main.py --instance 8 --version v1
+```
+---
+
+## MIP: available versions and which token to call
+
+The MIP folder contains several behaviors. Choose the token below when you run the container.
+
+| version token to pass | meaning / which implementation is used                                                                                                                                           |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `v1`                  | **base** behavior — run the `base` experiments from `v_1_2_3.py`. Use `--version v1`.                                                                                            |
+| `v3`                  | **i\<j** variant — the experiments that use the ordering `i<j` (symmetry handling). Implemented in `v_1_2_3.py` (same file but with `version='i<j'` passed). Use `--version v3`. |
+| `v4`                  | **pre** / preprocessing variant — calls `v_4.py` (`build_model_with_permutations`). Use `--version v4`.                                                                          |
+#### Where results are written
+
+* **Batch mode (no args)**: the MIP batch writes files into:
+
+  ```
+  /CDMO/res/MIP/{nn}.json
+  ```
+
+* **Single-version mode** (when you pass `--version` and `--instance`) the script writes to:
+
+  ```
+  /CDMO/res/additional_tests/{n}.json
+  ```

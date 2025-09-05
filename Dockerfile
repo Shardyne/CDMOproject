@@ -65,6 +65,11 @@ RUN set -eux; \
       echo \"[cvc5] no cvc5 binary found under /opt/cvc5\"; \
     fi
 
+RUN wget https://optimathsat.disi.unitn.it/releases/optimathsat-1.7.3/optimathsat-1.7.3-linux-64-bit.tar.gz \
+    && tar -xzf optimathsat-1.7.3-linux-64-bit.tar.gz \
+    && mv optimathsat-1.7.3-linux-64-bit /opt/optimathsat \
+    && ln -s /opt/optimathsat/bin/optimathsat /usr/local/bin/optimathsat \
+    && rm optimathsat-1.7.3-linux-64-bit.tar.gz
 
 # Install MiniZinc (available only x86_64 bundle)
 RUN set -eux; \
