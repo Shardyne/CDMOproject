@@ -294,8 +294,16 @@ def build_model_with_permutations(n: int,
     lp_status = pulp.LpStatus.get(prob.status, str(prob.status))
     has_incumbent = any(pulp.value(v) is not None for v in prob.variables())
 
+    is_optimal_status = (prob.status == 1)        # 1 -> Optimal
+    is_solution_found_status = (prob.status == 2) # 2 -> Solution Found (Integer feasible/incumbent)
+    is_no_solution = (prob.status == 0)           # 0 -> Not Solved / No Solution Found
+    is_infeasible = (prob.status == -1)           # -1 -> Infeasible
+    is_unbounded = (prob.status == -2)            # -2 -> Unbounded
+    is_undefined = (prob.status == -3)            # -3 -> Undefined
+
+
     sol_matrix = [[None for _ in W] for __ in P]  # periods x weeks
-    if has_incumbent and prob.status != pulp.constants.LpStatusInfeasible:
+    if has_incumbent and not is_infeasible and not is_undefined and not is_unbounded and not is_no_solution:
         for w in W:
             for per in P:
                 assigned = None
@@ -307,11 +315,12 @@ def build_model_with_permutations(n: int,
                 if assigned is None:
                     assigned = [0,0]
                 sol_matrix[per-1][w-1] = list(assigned)
-
+    else:
+        sol_matrix = []
     # Decide solved_flag & time_field (feasibility semantics)
     floored_total = int(math.floor(total_runtime))
     # simple rule: solved if incumbent found within allowed total time or infeasible proven
-    solved_flag = (has_incumbent and total_runtime < time_limit) or (prob.status == pulp.constants.LpStatusInfeasible)
+    solved_flag = (is_solution_found_status and total_runtime <= time_limit) or (is_optimal_status and total_runtime <= time_limit) or (is_infeasible)
     time_field = floored_total if solved_flag else time_limit
 
     result = {

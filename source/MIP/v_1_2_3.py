@@ -465,7 +465,7 @@ def build_model(
 
     # Extract solution if feasible/incumbent exists
     sol_matrix = []
-    if has_incumbent and not is_infeasible and not is_undefined and not is_unbounded:
+    if has_incumbent and not is_infeasible and not is_undefined and not is_unbounded and not is_no_solution:
         sol_matrix = [[None for _ in W] for __ in P]
         for w in W:
             for p in P:
