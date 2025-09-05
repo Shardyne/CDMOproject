@@ -10,5 +10,41 @@
     "optimal": true,
     "obj": null,
     "sol": []
+  },
+  "CBC_preprocessing_feasible_week1_26": {
+    "time": 0,
+    "optimal": true,
+    "obj": null,
+    "sol": []
+  },
+  "CBC_i<j_balanced_week1__878641": {
+    "time": 0,
+    "optimal": true,
+    "obj": 0.0,
+    "sol": []
+  },
+  "GLPK_preprocessing_balanced_dual_26": {
+    "time": 0,
+    "optimal": true,
+    "obj": 0,
+    "sol": []
+  },
+  "GLPK_base_feasible_dual_B_26": {
+    "time": 0,
+    "optimal": true,
+    "obj": null,
+    "sol": []
+  },
+  "GLPK_preprocessing_feasible_dual_26": {
+    "time": 0,
+    "optimal": true,
+    "obj": null,
+    "sol": []
+  },
+  "GLPK_i<j_balanced_dual_cuts_A_26": {
+    "time": 0,
+    "optimal": true,
+    "obj": 0.0,
+    "sol": []
   }
 }
