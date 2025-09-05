@@ -23,7 +23,8 @@ set -euo pipefail
 ###############################################################################
 
 # Allowed approaches (case-insensitive check)
-APPROACHES=(CP SMT MIP)
+APPROACHES=(MIP)
+# CP SMT 
 
 usage() {
   cat <<EOF

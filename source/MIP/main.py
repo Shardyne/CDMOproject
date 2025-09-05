@@ -337,13 +337,17 @@ def run_v3_single(n, module_v123):
 def run_v4_single(n, module_v4):
     """
     For version v4 and given n run two configurations (chosen as "analogous"):
-      (n,"CBC","balanced",True,42,"random_half")
-      (n,"GLPK","balanced",True,26,"")
+        (n, "CBC", "balanced", True, 42, "random_half"),
+        (n, "CBC", "feasible", True, 26, "week1"),
+        (n, "GLPK","balanced", True, 26, ""),
+        (n, "GLPK","feasible", True, 26, "")
     Save outputs to res/additional_tests/{n}.json
     """
     cases = [
         (n, "CBC", "balanced", True, 42, "random_half"),
+        (n, "CBC", "feasible", True, 26, "week1"),
         (n, "GLPK","balanced", True, 26, ""),
+        (n, "GLPK","feasible", True, 26, "")
     ]
     out_dir = os.path.join(HERE, "..", "..", "res", "additional_tests")
     os.makedirs(out_dir, exist_ok=True)
