@@ -98,10 +98,13 @@ VOLUME ["/CDMO/source"]
 
 # PRODUCTION script
 # Copy entrypoint and make it executable 
-# COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-# RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 # Entrypoint decides behavior based on args passed to docker run
-# ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+# Default command: none
+CMD []
+
 
 # DEVELOPMENT script
-CMD ["tail", "-f", "/dev/null"] 
+# CMD ["tail", "-f", "/dev/null"] 

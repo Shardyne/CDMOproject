@@ -231,7 +231,7 @@ def build_model(
             else: # base
                 prob += pulp.lpSum(x[(w,p,i,j)] for i in T for j in T if i != j) == 1, f"one_match_w{w}_p{p}"
 
-    # (2) Each unordered pair occurs exactly once
+    # (2) Each pair occurs exactly once
     for (i,j) in pairs:
         if version == "i<j":
             prob += pulp.lpSum(x[(w,p,i,j)] for w in W for p in P) == 1, f"pair_{i}_{j}"

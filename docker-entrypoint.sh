@@ -1,136 +1,137 @@
 #!/bin/bash
 set -euo pipefail
 
-# ENTRYPOINT for the STS docker image
-# Supports:
-#   - no args -> runs all solvers (CP,SAT,SMT,MIP) with DEFAULT_N and saves in res/test/
-#   - args: either positional: MODEL [VERSION] [N] [TIME] [SEED] [OUT]
-#           or long flags: --model MODEL --version v1 --n 6 --time 300 --seed y --out path
+###############################################################################
+# docker-entrypoint.sh
 #
-# Available flags:
-#   --model    (required when passing args)  : CP|SAT|SMT|MIP
-#   --version  (optional) default "v1"
-#   --n        (optional) default 6
-#   --time     (optional) default 300
-#   --seed     (optional) y|n default n
-#   --out      (optional) path to json output
+# Behavior:
+#  - If no args are given: run `python source/<APPROACH>/main.py` for each
+#    approach in APPROACHES = (CP, SMT, MIP) WITHOUT parameters.
+#  - If args are given:
+#      * Accepts either positional: APPROACH [N] [VERSION]
+#        Example: docker run image MIP 8 v1
+#      * Or accepts long flags passed after "--": --approach MIP --n 8 --version v1
+#        Example: docker run image -- --approach MIP --n 8 --version v1
+#  - For a single specified APPROACH, calls its main.py and forwards --version
+#    and --instance (named --n) and other defaults as needed.
+#
+# Notes:
+#  - You should mount your host source and res directories with:
+#      -v $(pwd)/source:/CDMO/source -v $(pwd)/res:/CDMO/res
+#  - The entrypoint calls python on "source/<APPROACH>/main.py".
+#  - If main.py expects different argument names, adapt the forwarding below.
+###############################################################################
 
-SOLVERS=("CP" "SAT" "SMT" "MIP")
-DEFAULT_N=6
-DEFAULT_TIME=300
-DEFAULT_VERSION="v1"
-DEFAULT_SEED="n"
+# Allowed approaches (case-insensitive check)
+APPROACHES=(CP SMT MIP)
 
 usage() {
   cat <<EOF
 Usage:
-  (1) No args: run all solvers with default n=${DEFAULT_N} and save to res/test/
-      docker run --rm -v $(pwd)/res:/CDMO/res -v $(pwd)/source:/CDMO/source IMAGE_NAME
+  # 1) No args -> run all default approaches:
+     docker run --rm -v \$(pwd)/source:/CDMO/source -v \$(pwd)/res:/CDMO/res IMAGE
 
-  (2) Positional: docker run IMAGE_NAME MODEL [VERSION] [N] [TIME] [SEED] [OUT]
-      Example:
-      docker run --rm -v $(pwd)/res:/CDMO/res -v $(pwd)/source:/CDMO/source IMAGE_NAME MIP v1 8 300 n res/person_test/MIP_8.json
+  # 2) Positional: run a single approach with optional n and version:
+     docker run --rm -v \$(pwd)/source:/CDMO/source -v \$(pwd)/res:/CDMO/res IMAGE MIP 8 v1
 
-  (3) Flags: docker run IMAGE_NAME -- --model MIP --version v1 --n 8 --time 300 --seed n --out res/person_test/MIP_8.json
+  # 3) Flags: run a single approach using long flags (note the extra -- to forward flags):
+     docker run --rm -v \$(pwd)/source:/CDMO/source -v \$(pwd)/res:/CDMO/res IMAGE -- --approach MIP --n 8 --version v1
 
-Note: mount your host 'source/' to /CDMO/source and 'res/' to /CDMO/res when running.
+Options:
+  --approach <APPROACH>    One of: CP, SMT, MIP
+  --n <int>                Instance size (even integer)
+  --version <str>          Version token (e.g. v1, v2, ...)
+  -h|--help                Show this help
 EOF
 }
 
-# If no args: batch mode over all solvers
+# helper: uppercase
+toupper() { echo "$1" | tr '[:lower:]' '[:upper:]'; }
+
+# If no arguments, run all approaches
 if [ "$#" -eq 0 ]; then
-  echo "[entrypoint] No args provided: running all solvers with n=${DEFAULT_N}"
-  mkdir -p /CDMO/res/test
-  for solver in "${SOLVERS[@]}"; do
-    echo "[entrypoint] Running solver ${solver} (default version=${DEFAULT_VERSION})..."
-    if [ -f "/CDMO/source/${solver}/main.py" ]; then
-      python /CDMO/source/"${solver}"/main.py --version "${DEFAULT_VERSION}" --instance "${DEFAULT_N}" --time "${DEFAULT_TIME}" --seed "${DEFAULT_SEED}" --out "/CDMO/res/test/${solver}_${DEFAULT_N}.json"
+  echo "[entrypoint] No arguments passed -> running all approaches (no params)."
+  for A in "${APPROACHES[@]}"; do
+    MAIN="/CDMO/source/${A}/main.py"
+    if [ -f "$MAIN" ]; then
+      echo "[entrypoint] Running ${MAIN} (with default args)..."
+      python "$MAIN"
     else
-      echo "[entrypoint] Warning: /CDMO/source/${solver}/main.py not found, skipping."
+      echo "[entrypoint] Warning: ${MAIN} not found. Skipping ${A}."
     fi
   done
-  echo "[entrypoint] Running aggregate check_solution.py on /CDMO/res/test"
-  if [ -f /CDMO/check_solution.py ]; then
-    python /CDMO/check_solution.py /CDMO/res/test
-  else
-    echo "[entrypoint] Warning: /CDMO/check_solution.py not found."
-  fi
+  echo "[entrypoint] All done."
   exit 0
 fi
 
-# Parse args (support both flags and positional)
-MODEL=""
+# If arguments are present, we support both long-flag style (starting with --)
+# and positional style. If first arg starts with --, parse flags.
+APPROACH=""
+N_VAL=""
 VERSION=""
-N=""
-TIME_LIMIT=""
-SEED=""
-OUT=""
-
-# If first arg startswith -- treat as flags; else accept positional and flags
+# parse long options if first arg starts with --
 if [[ "$1" == --* ]]; then
-  # parse long options
+  # shift through long options
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
-      --model) MODEL="$2"; shift 2;;
-      --version) VERSION="$2"; shift 2;;
-      --n) N="$2"; shift 2;;
-      --time) TIME_LIMIT="$2"; shift 2;;
-      --seed) SEED="$2"; shift 2;;
-      --out) OUT="$2"; shift 2;;
-      -h|--help) usage; exit 0;;
-      *) echo "Unknown option: $1"; usage; exit 1;;
+      --approach)
+        APPROACH="$2"; shift 2;;
+      --n|--instance)
+        N_VAL="$2"; shift 2;;
+      --version)
+        VERSION="$2"; shift 2;;
+      -h|--help)
+        usage; exit 0;;
+      *)
+        echo "[entrypoint] Unknown option: $1"
+        usage; exit 1;;
     esac
   done
 else
-  # positional parsing
-  MODEL="${1:-}"
-  VERSION="${2:-}"
-  N="${3:-}"
-  TIME_LIMIT="${4:-}"
-  SEED="${5:-}"
-  OUT="${6:-}"
+  # positional: approach [n] [version]
+  APPROACH="$1"
+  if [ "${2:-}" != "" ]; then
+    N_VAL="$2"
+  fi
+  if [ "${3:-}" != "" ]; then
+    VERSION="$3"
+  fi
 fi
 
-# set defaults where needed
-VERSION=${VERSION:-$DEFAULT_VERSION}
-N=${N:-$DEFAULT_N}
-TIME_LIMIT=${TIME_LIMIT:-$DEFAULT_TIME}
-SEED=${SEED:-$DEFAULT_SEED}
+# Normalize approach to uppercase
+APPROACH_UPPER=$(toupper "${APPROACH:-}")
 
-if [ -z "$MODEL" ]; then
-  echo "[entrypoint] ERROR: model not specified."
+# Validate approach
+valid=false
+for a in "${APPROACHES[@]}"; do
+  if [ "$APPROACH_UPPER" = "$a" ]; then
+    valid=true; break
+  fi
+done
+
+if [ "$valid" != "true" ]; then
+  echo "[entrypoint] ERROR: invalid approach '${APPROACH}'. Allowed: ${APPROACHES[*]}"
   usage
-  exit 1
+  exit 2
 fi
 
-MODEL_UPPER=$(echo "$MODEL" | tr '[:lower:]' '[:upper:]')
-TARGET_MAIN="/CDMO/source/${MODEL_UPPER}/main.py"
-
-if [ ! -f "$TARGET_MAIN" ]; then
-  echo "[entrypoint] ERROR: model main not found at ${TARGET_MAIN}"
-  exit 1
+# Build main.py path for chosen approach
+MAIN="/CDMO/source/${APPROACH_UPPER}/main.py"
+if [ ! -f "$MAIN" ]; then
+  echo "[entrypoint] ERROR: main file not found at ${MAIN}"; exit 3
 fi
 
-# Prepare output path if not specified
-if [ -z "$OUT" ]; then
-  mkdir -p /CDMO/res/person_test
-  OUT="/CDMO/res/person_test/${MODEL_UPPER}_${N}.json"
-else
-  # ensure directory exists
-  DIRNAME=$(dirname "$OUT")
-  mkdir -p "$DIRNAME"
+# Build python command with forwarded args
+CMD_ARGS=()
+# Forward version if present (use --version flag for the called main)
+if [ -n "$VERSION" ]; then
+  CMD_ARGS+=(--version "$VERSION")
+fi
+# Forward n as --instance (or --n) as the main expects
+if [ -n "$N_VAL" ]; then
+  CMD_ARGS+=(--instance "$N_VAL")
 fi
 
-echo "[entrypoint] Running model=${MODEL_UPPER}, version=${VERSION}, n=${N}, time=${TIME_LIMIT}, seed=${SEED}, out=${OUT}"
-python "$TARGET_MAIN" --version "$VERSION" --instance "$N" --time "$TIME_LIMIT" --seed "$SEED" --out "$OUT"
-
-# After running single model, run check_solution.py on the containing folder (if exists)
-OUT_DIR=$(dirname "$OUT")
-if [ -f /CDMO/source/check_solution.py ]; then
-  echo "[entrypoint] Running check_solution.py on ${OUT_DIR}"
-  python /CDMO/source/check_solution.py "$OUT_DIR"
-else
-  echo "[entrypoint] check_solution.py not found in /CDMO/source; skipping post-check."
-fi
-
-echo "[entrypoint] Done."
+echo "[entrypoint] Running ${MAIN} with args: ${CMD_ARGS[*]}"
+# Exec python with the chosen main and forwarded args
+exec python "$MAIN" "${CMD_ARGS[@]}"

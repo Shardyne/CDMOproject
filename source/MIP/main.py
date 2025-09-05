@@ -1,326 +1,471 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Strict-schema main for MIP experiments.
+source/MIP/main.py
 
-Schema for the "version" argument (underscore-separated):
-  version_solver_objective_seed_presolve_sym_warm_cuts
+Driver that orchestrates running the MIP variants v_1_2_3.py and v_4.py
+according to the rules you specified.
 
-Fields (position-based):
-  - version: one of {base, i!=j, i<j, pre}
-  - solver:  one of {CBC, GLPK}
-  - objective: {feas -> 'feasible', opt -> 'balanced'}
-  - seed: integer or 'n' (meaning no-seed)
-  - presolve: optional boolean 'True'|'False' (default True)
-  - sym: optional string containing letters A,B,C,D (only used by v_1_2_3)
-  - warm: warm_start strategy string (see README / allowed values)
-  - cuts: optional boolean 'True'|'False' (default False)
-  - DEBUG: optional boolean 'True'|'False' (default False)
+Usage examples (entrypoint will call this):
+  # batch mode (no args)
+  python source/MIP/main.py
 
-This main:
- - strictly parses the schema token into variables,
- - allows CLI overrides for instance (n), time, seed and out path,
- - selects the correct version file and calls the expected API.
- - merges the produced result into the JSON `out` under a stable key.
+  # single-version mode (example v1, n=8)
+  python source/MIP/main.py --version v1 --instance 8
+
+The script expects that v_1_2_3.py exposes a function:
+    build_model(n, solver, time_limit, seed, presolve, version, sym_flags, objective, warm_start, cuts)
+and that v_4.py exposes:
+    build_model_with_permutations(n, time_limit, seed, presolve, warm_start, objective, solver)
+
+If those functions are absent, the script will try to execute the module as fallback.
 """
 
-import argparse
-import importlib.util
-import json
 import os
 import sys
+import time
+import json
 import traceback
+import importlib.util
 
-# --------------------
-# Helpers
-# --------------------
-def bool_from_token(tok, default=False):
-    if tok is None:
-        return default
-    t = str(tok).strip().lower()
-    if t in ('1','true','t','y','yes'):
-        return True
-    if t in ('0','false','f','n','no'):
-        return False
-    return default
+HERE = os.path.dirname(__file__)
 
-def safe_int(tok):
-    try:
-        return int(tok)
-    except Exception:
-        return None
-
-def import_module_from_path(path):
-    """Import a python module from a file system path."""
+# ---- Helpers -----------------------------------------------------------------
+def import_module(path):
+    """Import a module from a filesystem path and return it."""
     if not os.path.exists(path):
         raise FileNotFoundError(path)
-    name = os.path.splitext(os.path.basename(path))[0]
-    spec = importlib.util.spec_from_file_location(name, path)
+    spec = importlib.util.spec_from_file_location(os.path.basename(path), path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
 
-def write_merge_json(out_path, key_name, result_dict):
-    """Merge result_dict under key_name into JSON file out_path."""
+def safe_int(x):
+    try:
+        return int(x)
+    except Exception:
+        return None
+
+def write_merge_json(out_path, key, result):
+    """Merge the result under key into JSON file out_path (create if missing)."""
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     old = {}
     if os.path.exists(out_path):
         try:
-            with open(out_path, 'r') as f:
+            with open(out_path, "r") as f:
                 old = json.load(f)
                 if not isinstance(old, dict):
                     old = {}
-        except Exception:
+        except (ValueError, json.JSONDecodeError):
             old = {}
-    old[key_name] = result_dict
-    with open(out_path, 'w') as f:
+    old.update({key: result})
+    with open(out_path, "w") as f:
         json.dump(old, f, indent=2)
 
 def make_default_result():
     return {"time": 300, "optimal": False, "obj": None, "sol": []}
 
-# --------------------
-# Parser strictly following schema
-# --------------------
-def parse_schema_token(schema_str):
+# ---- Predefined best-lists (from your description) ---------------------------
+V123_BESTS = [
+    # (n_max, solver, version, objective, seed, presolve, sym_flags, warm_start, cuts)
+    (14, "CBC", "base",  "feasible", 42, True,  "",      "week1", False),
+    (14, "CBC", "i<j",   "balanced", 878641, True, "",      "week1", False),
+    (12, "GLPK","base",  "feasible", 26, True,  "B",     "",      False),
+    (10, "GLPK","i<j",   "balanced", 26, True,  "A",     "",      True),
+]
+
+V4_BESTS = [
+    # (n_max, solver, objective, presolve, seed, warm_start)
+    (14, "CBC", "balanced", True, 42, "random_half"),
+    (16, "CBC", "feasible", True, 26, "week1"),
+    (12, "GLPK","balanced", True, 26, ""),
+    (12, "GLPK","feasible", True, 26, ""),
+]
+
+# ---- Core runner functions ---------------------------------------------------
+def run_v123_batch(module_v123):
     """
-    Parse the schema string version_solver_objective_seed_presolve_sym_warm_cuts
-    Returns a dictionary with parsed fields (with defaults).
+    Run the v_1_2_3 bests as in your snippet.
+    Results are written to res/MIP/{nn}.json
     """
-    parts = schema_str.split("_") if schema_str else []
-    # Initialize with defaults
-    parsed = {
-        "version": None,
-        "solver": None,
-        "objective": None,
-        "seed": None,
-        "presolve": True,
-        "sym": "",
-        "warm": "",
-        "cuts": False,
-        "debug": False
-    }
+    for n_max, solver, version, objective, seed, presolve, sym_flags, warm_start, cuts in V123_BESTS:
+        for nn in range(4, n_max + 1, 2):
+            res_dir = os.path.join(HERE, "..", "..", "res", "MIP")
+            os.makedirs(res_dir, exist_ok=True)
+            out_path = os.path.join(res_dir, f"{nn}.json")
+            global_start = time.time()
+            try:
+                # call build_model as required
+                if hasattr(module_v123, "build_model"):
+                    result_meta = module_v123.build_model(
+                        nn,
+                        solver=solver,
+                        time_limit=300,
+                        seed=seed,
+                        presolve=presolve,
+                        version=version,
+                        sym_flags=sym_flags,
+                        objective=objective,
+                        warm_start=warm_start,
+                        cuts=cuts
+                    )
+                    # build_model may return (result, meta) or just result
+                    if isinstance(result_meta, tuple) and len(result_meta) == 2:
+                        result, meta = result_meta
+                    else:
+                        result = result_meta
+                        meta = {"pulp_status": "ok", "runtime_sec": 0.0}
+                else:
+                    # fallback: execute module as script (it might implement its own driver)
+                    print(f"[WARN] module v_1_2_3 has no build_model; executing as script fallback for nn={nn}")
+                    import runpy
+                    runpy.run_path(os.path.join(os.path.dirname(module_v123.__file__), "v_1_2_3.py"), run_name="__main__")
+                    result = make_default_result()
+                    meta = {"pulp_status":"ran_script", "runtime_sec": 0.0}
+            except Exception as e:
+                print(f"[ERROR] n={nn} v={version} obj={objective} seed={seed} presolve={presolve}: {e}")
+                traceback.print_exc()
+                result = {"time": 300, "optimal": False, "obj": None, "sol": []}
+                meta = {"pulp_status":"error","runtime_sec":0.0}
+            global_end = time.time()
+            total_runtime = global_end - global_start
 
-    # Required minimum: version, solver, objective, seed.
-    # We'll extract sequentially; missing optional fields left as defaults.
-    if len(parts) >= 1:
-        parsed['version'] = parts[0].strip()
-    if len(parts) >= 2:
-        parsed['solver'] = parts[1].strip().upper()
-    if len(parts) >= 3:
-        obj_tok = parts[2].strip().lower()
-        if obj_tok in ('feas', 'feasible'):
-            parsed['objective'] = 'feasible'
-        elif obj_tok in ('opt', 'balanced', 'balance'):
-            parsed['objective'] = 'balanced'
+            # compute key as specified
+            if solver == "CBC":
+                key = f"{solver}_{version}_{objective}_{warm_start}_{sym_flags}_{seed}"
+            else:
+                if cuts:
+                    key = f"{solver}_{version}_{objective}_dual_cuts_{sym_flags}_{seed}"
+                else:
+                    key = f"{solver}_{version}_{objective}_dual_{sym_flags}_{seed}"
+
+            # Logging
+            print(f"[DONE] n={nn} approach= {key} presolve={presolve} seed={seed} -> {out_path}")
+            print(f"Status: {meta.get('pulp_status','?')} | optimal={result.get('optimal',False)} | obj={result.get('obj',None)}")
+            print(f"Runtime (total, incl. 'presolve') = {total_runtime:.2f}s (time field written: {result.get('time')})")
+
+            # Merge and write
+            try:
+                write_merge_json(out_path, key, result)
+            except Exception as e:
+                print(f"[ERROR] writing json {out_path}: {e}")
+                traceback.print_exc()
+
+def run_v4_batch(module_v4):
+    """
+    Run the v_4 bests as in your snippet.
+    Results are written to res/MIP/{nn}.json
+    """
+    for n_max, solver, objective, presolve, seed, warm_start in V4_BESTS:
+        for nn in range(4, n_max + 1, 2):
+            res_dir = os.path.join(HERE, "..", "..", "res", "MIP")
+            os.makedirs(res_dir, exist_ok=True)
+            out_path = os.path.join(res_dir, f"{nn}.json")
+            global_start = time.time()
+            try:
+                if hasattr(module_v4, "build_model_with_permutations"):
+                    result_meta = module_v4.build_model_with_permutations(
+                        n=nn,
+                        time_limit=300,
+                        seed=seed,
+                        presolve=presolve,
+                        warm_start=warm_start,
+                        objective=objective,
+                        solver=solver
+                    )
+                    if isinstance(result_meta, tuple) and len(result_meta) == 2:
+                        result, meta = result_meta
+                    else:
+                        result = result_meta
+                        meta = {"pulp_status":"ok","runtime_sec":0.0}
+                else:
+                    print(f"[WARN] v_4 has no build_model_with_permutations; running script fallback for nn={nn}")
+                    import runpy
+                    runpy.run_path(os.path.join(os.path.dirname(module_v4.__file__), "v_4.py"), run_name="__main__")
+                    result = make_default_result()
+                    meta = {"pulp_status":"ran_script","runtime_sec":0.0}
+            except Exception as e:
+                print(f"[ERROR] n={nn} v=preprocessing obj={objective} seed={seed} presolve={presolve}: {e}")
+                traceback.print_exc()
+                result = {"time": 300, "optimal": False, "obj": None, "sol": []}
+                meta = {"pulp_status":"error","runtime_sec":0.0}
+            global_end = time.time()
+            total_runtime = global_end - global_start
+
+            # compute key for preprocessing as specified
+            if solver == "CBC":
+                key = f"{solver}_preprocessing_{objective}_{warm_start}_{seed}"
+            else:
+                key = f"{solver}_preprocessing_{objective}_dual_{seed}"
+
+            # Logging
+            print(f"[DONE] n={nn} approach= {key} presolve={presolve} seed={seed} -> {out_path}")
+            print(f"Status: {meta.get('pulp_status','?')} | optimal={result.get('optimal',False)} | obj={result.get('obj',None)}")
+            print(f"Runtime (total, incl. 'presolve') = {total_runtime:.2f}s (time field written: {result.get('time')})")
+
+            # Merge and write
+            try:
+                write_merge_json(out_path, key, result)
+            except Exception as e:
+                print(f"[ERROR] writing json {out_path}: {e}")
+                traceback.print_exc()
+
+# ---- Single-version (additional_tests) runners --------------------------------
+def run_v1_single(n, module_v123):
+    """
+    For version v1 and given n run the two specified configurations:
+      (n,"CBC","base","feasible",42,True,"","week1",False)
+      (n,"GLPK","base","feasible",26,True,"B","",False)
+    Save outputs to res/additional_tests/{n}.json (merged keys).
+    """
+    cases = [
+        (n, "CBC", "base",  "feasible", 42, True,  "",      "week1", False),
+        (n, "GLPK","base",  "feasible", 26, True,  "B",     "",      False),
+    ]
+    out_dir = os.path.join(HERE, "..", "..", "res", "additional_tests")
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, f"{n}.json")
+
+    for (nn, solver, version, objective, seed, presolve, sym_flags, warm_start, cuts) in cases:
+        global_start = time.time()
+        try:
+            if hasattr(module_v123, "build_model"):
+                result_meta = module_v123.build_model(
+                    nn, solver=solver, time_limit=300, seed=seed, presolve=presolve,
+                    version=version, sym_flags=sym_flags, objective=objective,
+                    warm_start=warm_start, cuts=cuts
+                )
+                if isinstance(result_meta, tuple) and len(result_meta) == 2:
+                    result, meta = result_meta
+                else:
+                    result = result_meta
+                    meta = {"pulp_status":"ok","runtime_sec":0.0}
+            else:
+                print("[WARN] build_model not found in v_1_2_3, running fallback")
+                import runpy
+                runpy.run_path(os.path.join(os.path.dirname(module_v123.__file__), "v_1_2_3.py"), run_name="__main__")
+                result = make_default_result()
+                meta = {"pulp_status":"ran_script","runtime_sec":0.0}
+        except Exception as e:
+            print(f"[ERROR] single v1 run n={nn} solver={solver}: {e}")
+            traceback.print_exc()
+            result = make_default_result()
+            meta = {"pulp_status":"error","runtime_sec":0.0}
+        global_end = time.time()
+        total_runtime = global_end - global_start
+
+        # construct key same as earlier logic
+        if solver == "CBC":
+            key = f"{solver}_{version}_{objective}_{warm_start}_{sym_flags}_{seed}"
         else:
-            parsed['objective'] = obj_tok  # keep raw if unknown
-    if len(parts) >= 4:
-        seed_tok = parts[3].strip()
-        if seed_tok.lower() == 'n':
-            parsed['seed'] = None
+            if cuts:
+                key = f"{solver}_{version}_{objective}_dual_cuts_{sym_flags}_{seed}"
+            else:
+                key = f"{solver}_{version}_{objective}_dual_{sym_flags}_{seed}"
+
+        print(f"[DONE] n={nn} approach= {key} presolve={presolve} seed={seed} -> {out_path}")
+        print(f"Status: {meta.get('pulp_status','?')} | optimal={result.get('optimal',False)} | obj={result.get('obj',None)}")
+        print(f"Runtime (total, incl. 'presolve') = {total_runtime:.2f}s (time field written: {result.get('time')})")
+
+        try:
+            write_merge_json(out_path, key, result)
+        except Exception as e:
+            print(f"[ERROR] writing single v1 json: {e}")
+            traceback.print_exc()
+
+def run_v3_single(n, module_v123):
+    """
+    For version v3 (i<j) and given n run two specific configurations:
+      (n,"CBC","i<j","balanced",878641,True,"","week1",False)
+      (n,"GLPK","i<j","balanced",26,True,"A","",True)
+    Save outputs to res/additional_tests/{n}.json
+    """
+    cases = [
+        (n, "CBC", "i<j", "balanced", 878641, True,  "",      "week1", False),
+        (n, "GLPK","i<j", "balanced", 26,     True,  "A",     "",      True),
+    ]
+    out_dir = os.path.join(HERE, "..", "..", "res", "additional_tests")
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, f"{n}.json")
+
+    for (nn, solver, version, objective, seed, presolve, sym_flags, warm_start, cuts) in cases:
+        global_start = time.time()
+        try:
+            if hasattr(module_v123, "build_model"):
+                result_meta = module_v123.build_model(
+                    nn, solver=solver, time_limit=300, seed=seed, presolve=presolve,
+                    version=version, sym_flags=sym_flags, objective=objective,
+                    warm_start=warm_start, cuts=cuts
+                )
+                if isinstance(result_meta, tuple) and len(result_meta) == 2:
+                    result, meta = result_meta
+                else:
+                    result = result_meta
+                    meta = {"pulp_status":"ok","runtime_sec":0.0}
+            else:
+                print("[WARN] build_model not found in v_1_2_3, running fallback")
+                import runpy
+                runpy.run_path(os.path.join(os.path.dirname(module_v123.__file__), "v_1_2_3.py"), run_name="__main__")
+                result = make_default_result()
+                meta = {"pulp_status":"ran_script","runtime_sec":0.0}
+        except Exception as e:
+            print(f"[ERROR] single v3 run n={nn} solver={solver}: {e}")
+            traceback.print_exc()
+            result = make_default_result()
+            meta = {"pulp_status":"error","runtime_sec":0.0}
+        global_end = time.time()
+        total_runtime = global_end - global_start
+
+        if solver == "CBC":
+            key = f"{solver}_{version}_{objective}_{warm_start}_{sym_flags}_{seed}"
         else:
-            parsed['seed'] = safe_int(seed_tok) if safe_int(seed_tok) is not None else seed_tok
-    # optional presolve
-    if len(parts) >= 5:
-        parsed['presolve'] = bool_from_token(parts[4], default=True)
-    if len(parts) >= 6:
-        parsed['sym'] = parts[5].strip()
-    if len(parts) >= 7:
-        parsed['warm'] = parts[6].strip()
-    if len(parts) >= 8:
-        parsed['cuts'] = bool_from_token(parts[7], default=False)
-    if len(parts) >= 9:
-        parsed['debug'] = bool_from_token(parts[8], default=False)
+            if cuts:
+                key = f"{solver}_{version}_{objective}_dual_cuts_{sym_flags}_{seed}"
+            else:
+                key = f"{solver}_{version}_{objective}_dual_{sym_flags}_{seed}"
 
-    # Normalize version tokens: accept different synonyms
-    v = parsed['version']
-    if v is not None:
-        vv = v.lower()
-        if vv in ('base', 'v1', 'v_1', 'v_1_2_3', 'v123'):
-            parsed['version'] = 'base'
-        elif vv in ('i!=j', 'i_not_eq_j', 'neq'):
-            parsed['version'] = 'i!=j'
-        elif vv in ('i<j', 'ilj', 'ilessj'):
-            parsed['version'] = 'i<j'
-        elif vv in ('pre', 'preprocessing','v4','v_4'):
-            parsed['version'] = 'pre'
-        else:
-            # if unknown, try to pass through
-            parsed['version'] = v
+        print(f"[DONE] n={nn} approach= {key} presolve={presolve} seed={seed} -> {out_path}")
+        print(f"Status: {meta.get('pulp_status','?')} | optimal={result.get('optimal',False)} | obj={result.get('obj',None)}")
+        print(f"Runtime (total, incl. 'presolve') = {total_runtime:.2f}s (time field written: {result.get('time')})")
 
-    # Validate solver
-    if parsed['solver'] is not None:
-        if parsed['solver'] not in ('CBC','GLPK','CPLEX','GUROBI'):
-            # Accept only CBC or GLPK as per your allowed list; fallback to CBC
-            parsed['solver'] = parsed['solver']  # keep but caller may override
-    return parsed
+        try:
+            write_merge_json(out_path, key, result)
+        except Exception as e:
+            print(f"[ERROR] writing single v3 json: {e}")
+            traceback.print_exc()
 
-# --------------------
-# Main
-# --------------------
-def main():
-    parser = argparse.ArgumentParser(description="MIP main driver (strict schema parser).")
-    parser.add_argument("--version", type=str, required=True,
-                        help="version schema: version_solver_objective_seed_presolve_sym_warm_cuts")
-    parser.add_argument("--instance", "--n", dest="n", type=int, required=True,
-                        help="number of teams (n must be even)")
-    parser.add_argument("--time", dest="time_limit", type=int, default=300,
-                        help="time limit in seconds (default 300)")
-    parser.add_argument("--seed", dest="seed_cli", type=str, default=None,
-                        help="override seed from schema; use integer or 'n' for no seed")
-    parser.add_argument("--out", type=str, default=None,
-                        help="output JSON path. Default: res/MIP/{n}.json")
-    args = parser.parse_args()
+def run_v4_single(n, module_v4):
+    """
+    For version v4 and given n run two configurations (chosen as "analogous"):
+      (n,"CBC","balanced",True,42,"random_half")
+      (n,"GLPK","balanced",True,26,"")
+    Save outputs to res/additional_tests/{n}.json
+    """
+    cases = [
+        (n, "CBC", "balanced", True, 42, "random_half"),
+        (n, "GLPK","balanced", True, 26, ""),
+    ]
+    out_dir = os.path.join(HERE, "..", "..", "res", "additional_tests")
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, f"{n}.json")
 
-    # Parse the strict schema
-    parsed = parse_schema_token(args.version)
-
-    # CLI overrides for seed (if provided)
-    if args.seed_cli is not None:
-        s = args.seed_cli.strip()
-        if s.lower() == 'n':
-            parsed['seed'] = None
-        else:
-            parsed['seed'] = safe_int(s) if safe_int(s) is not None else s
-
-    # Compose effective args
-    n = args.n
-    time_limit = args.time_limit
-    seed = parsed['seed']
-    presolve = parsed['presolve']
-    sym = parsed['sym']
-    warm = parsed['warm']
-    cuts = parsed['cuts']
-    debug = parsed['debug']
-    solver = parsed['solver'] or "CBC"
-    objective = parsed['objective'] or "feasible"
-    version = parsed['version']
-
-    # Decide which version file to load
-    here = os.path.dirname(__file__)
-    if version == 'pre':
-        version_file = os.path.join(here, "v_4.py")
-    else:
-        # all of base, i!=j, i<j are handled inside v_1_2_3.py by passing 'version' parameter
-        version_file = os.path.join(here, "v_1_2_3.py")
-
-    # default output path if not provided
-    out = args.out
-    if out is None:
-        out_dir = os.path.join(os.getcwd(), "res", "MIP")
-        os.makedirs(out_dir, exist_ok=True)
-        out = os.path.join(out_dir, f"{n}.json")
-
-    # Generate a stable approach key for JSON merging
-    # Example keys:
-    #  CBC_base_feasible_week1_seed42_presolveTrue_cutsFalse
-    #  GLPK_preprocessing_balanced_week1_seed26_presolveTrue_cutsFalse
-    solver_tag = solver.upper()
-    ver_tag = ("preprocessing" if version == 'pre' else version.replace('!','bang').replace('<','lt'))
-    key_elems = [solver_tag, ver_tag, objective]
-    if warm:
-        key_elems.append(str(warm))
-    if seed is not None:
-        key_elems.append(f"seed{seed}")
-    key_elems.append(f"presolve{str(presolve)}")
-    key_elems.append(f"cuts{str(cuts)}")
-    if sym:
-        key_elems.append(f"sym{sym}")
-    key_name = "_".join(key_elems)
-
-    # Import module and call expected API
-    result = None
-    meta = {"pulp_status": "unknown", "runtime_sec": 0.0}
-
-    try:
-        mod = import_module_from_path(version_file)
-    except Exception as e:
-        print(f"[ERROR] Cannot import version file {version_file}: {e}", file=sys.stderr)
-        traceback.print_exc()
-        # write fallback
-        write_merge_json(out, key_name, make_default_result())
-        sys.exit(2)
-
-    print(f"[INFO] Invoking MIP version file: {version_file}")
-    print(f"[INFO] params: n={n}, solver={solver}, objective={objective}, seed={seed}, presolve={presolve}, sym={sym}, warm={warm}, cuts={cuts}, time_limit={time_limit}")
-
-    try:
-        if version == 'pre':
-            # v_4: prefer build_model_with_permutations(n=..., time_limit=..., seed=..., presolve=..., warm_start=..., objective=..., solver=...)
-            if hasattr(mod, "build_model_with_permutations"):
-                out_res = mod.build_model_with_permutations(
-                    n=n,
-                    time_limit=time_limit,
+    for (nn, solver, objective, presolve, seed, warm_start) in cases:
+        global_start = time.time()
+        try:
+            if hasattr(module_v4, "build_model_with_permutations"):
+                result_meta = module_v4.build_model_with_permutations(
+                    n=nn,
+                    time_limit=300,
                     seed=seed,
                     presolve=presolve,
-                    warm_start=warm,
+                    warm_start=warm_start,
                     objective=objective,
                     solver=solver
                 )
-                if isinstance(out_res, tuple) and len(out_res) == 2:
-                    result, meta = out_res
+                if isinstance(result_meta, tuple) and len(result_meta) == 2:
+                    result, meta = result_meta
                 else:
-                    result = out_res
+                    result = result_meta
                     meta = {"pulp_status":"ok","runtime_sec":0.0}
             else:
-                # fallback: run module as script (it might have its own driver)
-                print("[WARN] v_4 module has no build_model_with_permutations; executing as script fallback.")
+                print("[WARN] v_4 has no build_model_with_permutations; running fallback script")
                 import runpy
-                runpy.run_path(version_file, run_name="__main__")
+                runpy.run_path(os.path.join(os.path.dirname(module_v4.__file__), "v_4.py"), run_name="__main__")
                 result = make_default_result()
                 meta = {"pulp_status":"ran_script","runtime_sec":0.0}
+        except Exception as e:
+            print(f"[ERROR] single v4 run n={nn} solver={solver}: {e}")
+            traceback.print_exc()
+            result = make_default_result()
+            meta = {"pulp_status":"error","runtime_sec":0.0}
+        global_end = time.time()
+        total_runtime = global_end - global_start
+
+        if solver == "CBC":
+            key = f"{solver}_preprocessing_{objective}_{warm_start}_{seed}"
         else:
-            # v_1_2_3: call build_model(nn, solver=..., time_limit=..., seed=..., presolve=..., version=..., sym_flags=..., objective=..., warm_start=..., cuts=...)
-            if hasattr(mod, "build_model"):
-                out_res = mod.build_model(
-                    n=n,
-                    solver=solver,
-                    time_limit=time_limit,
-                    seed=seed,
-                    presolve=presolve,
-                    version=version,        # pass 'base' or 'i!=j' or 'i<j'
-                    sym_flags=sym or "",
-                    objective=objective,
-                    warm_start=warm or "",
-                    cuts=cuts
-                )
-                if isinstance(out_res, tuple) and len(out_res) == 2:
-                    result, meta = out_res
-                else:
-                    result = out_res
-                    meta = {"pulp_status":"ok","runtime_sec":0.0}
-            else:
-                # fallback: maybe the module defines a 'run' helper; else run it as script
-                if hasattr(mod, "run"):
-                    out_res = mod.run(n, time_limit, bool(seed))
-                    if isinstance(out_res, tuple) and len(out_res) == 2:
-                        result, meta = out_res
-                    else:
-                        result = out_res
-                        meta = {"pulp_status":"ok","runtime_sec":0.0}
-                else:
-                    print("[WARN] v_1_2_3 module has no build_model or run: executing as script fallback.")
-                    import runpy
-                    runpy.run_path(version_file, run_name="__main__")
-                    result = make_default_result()
-                    meta = {"pulp_status":"ran_script","runtime_sec":0.0}
+            key = f"{solver}_preprocessing_{objective}_dual_{seed}"
 
-    except Exception as exc:
-        print(f"[ERROR] Exception while executing model: {exc}", file=sys.stderr)
-        traceback.print_exc()
-        result = make_default_result()
-        meta = {"pulp_status":"error","runtime_sec":0.0}
+        print(f"[DONE] n={nn} approach= {key} presolve={presolve} seed={seed} -> {out_path}")
+        print(f"Status: {meta.get('pulp_status','?')} | optimal={result.get('optimal',False)} | obj={result.get('obj',None)}")
+        print(f"Runtime (total, incl. 'presolve') = {total_runtime:.2f}s (time field written: {result.get('time')})")
 
-    if result is None:
-        result = make_default_result()
+        try:
+            write_merge_json(out_path, key, result)
+        except Exception as e:
+            print(f"[ERROR] writing single v4 json: {e}")
+            traceback.print_exc()
 
-    # Merge & write JSON
+# ---- Entry point ------------------------------------------------------------
+def main():
+    """
+    If no args -> run batch for both v_1_2_3 and v_4
+    If args -> expects --version <v1|v3|v4> --instance <n>
+    (we accept also -h / --help)
+    """
+    import argparse
+    parser = argparse.ArgumentParser(description="MIP main driver for batch / single runs")
+    parser.add_argument("--version", type=str, default=None, help="version token: v1, v3, v4 (or none for batch)")
+    parser.add_argument("--instance", "--n", dest="n", type=int, default=None, help="n (even)")
+    args = parser.parse_args()
+
+    # import modules
+    v123_path = os.path.join(HERE, "v_1_2_3.py")
+    v4_path = os.path.join(HERE, "v_4.py")
     try:
-        write_merge_json(out, key_name, result)
-        print(f"[DONE] Wrote/merged result into {out} under key {key_name}")
+        module_v123 = import_module(v123_path)
     except Exception as e:
-        print(f"[ERROR] while writing output JSON: {e}", file=sys.stderr)
+        print(f"[ERROR] Could not import v_1_2_3.py: {e}", file=sys.stderr)
         traceback.print_exc()
+        module_v123 = None
+    try:
+        module_v4 = import_module(v4_path)
+    except Exception as e:
+        print(f"[ERROR] Could not import v_4.py: {e}", file=sys.stderr)
+        traceback.print_exc()
+        module_v4 = None
+
+    # Batch mode: no version specified
+    if args.version is None:
+        print("[INFO] No version specified -> running batch for v_1_2_3 and v_4")
+        if module_v123 is not None:
+            run_v123_batch(module_v123)
+        else:
+            print("[WARN] module_v123 not available: skipping v_1_2_3 batch")
+        if module_v4 is not None:
+            run_v4_batch(module_v4)
+        else:
+            print("[WARN] module_v4 not available: skipping v_4 batch")
+        print("[INFO] Batch finished.")
+        return
+
+    # Single-version mode: user passed --version and --instance (n)
+    ver = args.version.strip().lower()
+    n = args.n
+    if n is None:
+        print("[ERROR] When specifying --version you must also specify --instance (n).", file=sys.stderr)
+        sys.exit(2)
+
+    # Normalise version tokens: accept 'v1' -> 'v1' (we map to v_1 behavior), 'v3' -> i<j, 'v4' -> pre
+    if ver in ("v1", "base", "v_1"):
+        # run v1 cases
+        if module_v123 is None:
+            print("[ERROR] v_1_2_3 module not available", file=sys.stderr); sys.exit(3)
+        print(f"[INFO] Single-version mode: v1 for n={n}")
+        run_v1_single(n, module_v123)
+    elif ver in ("v3", "i<j", "v_3"):
+        if module_v123 is None:
+            print("[ERROR] v_1_2_3 module not available", file=sys.stderr); sys.exit(3)
+        print(f"[INFO] Single-version mode: v3 (i<j) for n={n}")
+        run_v3_single(n, module_v123)
+    elif ver in ("v4", "pre", "preprocessing"):
+        if module_v4 is None:
+            print("[ERROR] v_4 module not available", file=sys.stderr); sys.exit(3)
+        print(f"[INFO] Single-version mode: v4 (preprocessing) for n={n}")
+        run_v4_single(n, module_v4)
+    else:
+        print(f"[ERROR] Unknown version token: {args.version}", file=sys.stderr)
+        sys.exit(4)
 
 if __name__ == "__main__":
     main()
