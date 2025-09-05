@@ -215,13 +215,13 @@ def run_solver(smt_path, solver, timeout_s):
     if "z3" in solver_name:
         cmd = [
     solver, "-smt2", smt_path,
-    "smt.random_seed=15",
+    "smt.random_seed=0",
     "smt.phase_selection=4",   # Disable flattening that can vary
 ]
     elif "cvc5" in solver_name:
         cmd = [
             solver, "--lang=smt2", smt_path,  # Internal timeout (milliseconds)
-            "--seed=42",                          # Deterministic behavior
+            "--seed=0",                          # Deterministic behavior
             "--decision=internal",                # Consistent decision heuristic
             "--produce-models"                    # Ensure model generation
         ]

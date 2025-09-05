@@ -7,6 +7,7 @@ def main():
     # define the arguments of the parser
     ap = argparse.ArgumentParser(description="Parse SMT2 model and update res/SMT/{N}.json")
     ap.add_argument("--solver", default="z3", choices=["z3", "cvc5", 'opti'], help="Solver binary")
+    
     ap.add_argument("--approach", choices=["channeled", "offline"], help="approach to use")
     ap.add_argument("--timeout", type=int, default=300, help="Timeout seconds")
     ap.add_argument("--N", type=int, required=False, help="Teams (even). If omitted, inferred.")
@@ -24,15 +25,16 @@ def main():
         s, Per, Home, Opp = channeled_model_no_check(N)
         s = symmetry_breaking_constraints(N, s, Home, Per, Opp)
         smt = s.to_smt2()
-        end=time.time()-start
+        
 
         with tempfile.NamedTemporaryFile("w", suffix=".smt2", delete=False) as f:
             f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n")
             f.write(smt)
             f.write("(get-model)\n")
             f.flush()
-            stdout, stderr, elapsed = run_solver(f.name, args.solver, args.timeout-end)
-            print(end)
+            end=time.time()-start
+            total_time+=end
+            stdout, stderr, elapsed = run_solver(f.name, args.solver, args.timeout-total_time)
             tmp_path = f.name
         os.remove(tmp_path)
 
@@ -42,7 +44,7 @@ def main():
         else:
             solved = 1
         
-        total_time += elapsed+end
+        total_time += elapsed
 
         if solved != 0:
             assigns = parse_model(stdout)
@@ -62,14 +64,14 @@ def main():
             s, Home = smt_obj_manual(N, Home, obj, counts, s)
             s = symmetry_breaking_constraints(N, s, Home, Per, Opp)
             smt = s.to_smt2()
-            end2=time.time()-start2
-            total_time+=end2
 
             with tempfile.NamedTemporaryFile("w", suffix=".smt2", delete=False) as f:
                 f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n")
                 f.write(smt)
                 f.write("(get-model)\n")
                 f.flush()
+                end2=time.time()-start2
+                total_time+=end2
                 stdout, stderr, elapsed2 = run_solver(f.name, args.solver, max(1, args.timeout - total_time))
 
                 os.remove(f.name)
@@ -94,14 +96,16 @@ def main():
         s, Home, Per, matches = offline_approach_domains(N)
         s = symmetry_breaking_constraints_offline(N, s, Home, Per, matches)
         smt = s.to_smt2()
-        end3=time.time()-start3
+        
 
         with tempfile.NamedTemporaryFile("w", suffix=".smt2", delete=False) as f:
             f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n")
             f.write(smt)
             f.write("(get-model)\n")
             f.flush()
-            stdout, stderr, elapsed3 = run_solver(f.name, args.solver, args.timeout)
+            end3=time.time()-start3
+            total_time+=end3
+            stdout, stderr, elapsed3 = run_solver(f.name, args.solver, args.timeout-total_time)
             tmp_path = f.name
         os.remove(tmp_path)
 
@@ -132,13 +136,14 @@ def main():
             s, Home = smt_obj_manual(N, Home, obj, counts, s)
             s = symmetry_breaking_constraints_offline(N, s, Home, Per, matches)
             smt = s.to_smt2()
-            end4=time.time()-start4
+           
 
             with tempfile.NamedTemporaryFile("w", suffix=".smt2", delete=False) as f:
                 f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)")
                 f.write(smt)
                 f.write("(get-model)\n")
-                f.flush()
+                f.flush() 
+                end4=time.time()-start4
                 total_time+=end4
                 stdout, stderr, elapsed4 = run_solver(f.name, args.solver, args.timeout - total_time) 
                 os.remove(f.name)
@@ -153,7 +158,6 @@ def main():
             counts = [sum(1 if as_bool(Home[t][w]) else 0 for w in range(W)) for t in range(T)]
             obj = int(sum(abs(2 * c - W) for c in counts))
             status=get_status(stdout)
-            
             print(counts)
 
     # ... (rest of your code for timeout/unsat handling, solution reconstruction, JSON writing)
