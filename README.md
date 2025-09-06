@@ -3,6 +3,8 @@ Project for the Combinatorial Decision Making &amp; Optimization course of the M
 
 # Docker usage (quick guide)
 
+>> WARNING: The Dockerfile was tested on both x86 and arm architectures (for arm you need to add the flag when building the image: --platform linux/amd64), but the SMT solver CVC5 is not set up to work on arm architecture.
+
 This README explains how to build and run the project image using **only Docker CLI**. It documents the available flags that the container entrypoint accepts, shows concrete examples, and lists the available versions and which version token to pass when you want to run a specific experiment.
 
 All commands assume you run them from the project root where the `Dockerfile` and the `source/` directory live.
