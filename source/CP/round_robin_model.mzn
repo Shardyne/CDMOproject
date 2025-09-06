@@ -27,7 +27,7 @@ constraint
 
 output [
   "{",
-  "\"optimal\":false,",
+  "\"optimal\":true,",
   "\"obj\":\"None\",",
   "\"sol\":[",
     join(",",
