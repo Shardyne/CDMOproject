@@ -1,0 +1,20 @@
+{
+  "CBC_preprocessing_balanced_random_half_42": {
+    "time": 300,
+    "optimal": false,
+    "obj": 0,
+    "sol": []
+  },
+  "CBC_preprocessing_balanced_random_half_26": {
+    "time": 300,
+    "optimal": false,
+    "obj": 0,
+    "sol": []
+  },
+  "CBC_preprocessing_balanced_random_half_666": {
+    "time": 300,
+    "optimal": false,
+    "obj": 0,
+    "sol": []
+  }
+}

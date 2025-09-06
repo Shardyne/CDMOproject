@@ -1,0 +1,8 @@
+file,CBC_base_feasible_week1__42,CBC_i<j_balanced_week1__878641,CBC_prepro_anchor_balanced_random_half_42,CBC_prepro_anchor_feasible_week1_26,GLPK_base_feasible_dual_B_26,GLPK_i<j_balanced_dual_cuts_A_26,GLPK_preproc_anchor_balanced_dual_26,GLPK_preproc_anchor_feasible_dual_26
+4.json,0=None,0=0.0,0=0,0=None,0=None,0=0.0,0=0,0=None
+6.json,0=None,0=0.0,0=0,0=None,0=None,0=0.0,0=0,0=None
+8.json,0=None,1=0.0,0=0,0=None,0=None,0=0.0,0=0,0=None
+10.json,3=None,4=0.0,1=0,0=None,5=None,18=0.0,1=0,0=None
+12.json,3=None,37=0.0,1=0,1=None,15=None,,31=0,2=None
+14.json,5=None,83=0.0,44=0,5=None,,,,95=None
+16.json,,,300=0,76=None,,,,

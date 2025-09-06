@@ -76,11 +76,12 @@ V123_BESTS = [
 
 V4_BESTS = [
     # (n_max, solver, objective, presolve, seed, warm_start)
-    (14, "CBC", "balanced", True, 42, "random_half"),
+    (16, "CBC", "balanced", True, 42, "random_half"),
     (16, "CBC", "feasible", True, 26, "week1"),
     (12, "GLPK","balanced", True, 26, ""),
-    (12, "GLPK","feasible", True, 26, ""),
+    (14, "GLPK","feasible", True, 26, ""),
 ]
+
 
 # ---- Core runner functions ---------------------------------------------------
 def run_v123_batch(module_v123):
@@ -194,9 +195,9 @@ def run_v4_batch(module_v4):
 
             # compute key for preprocessing as specified
             if solver == "CBC":
-                key = f"{solver}_preprocessing_{objective}_{warm_start}_{seed}"
+                key = f"{solver}_prepro_anchor_{objective}_{warm_start}_{seed}"
             else:
-                key = f"{solver}_preprocessing_{objective}_dual_{seed}"
+                key = f"{solver}_preproc_anchor_{objective}_dual_{seed}"
 
             # Logging
             print(f"[DONE] n={nn} approach= {key} presolve={presolve} seed={seed} -> {out_path}")

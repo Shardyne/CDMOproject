@@ -597,6 +597,7 @@ def build_model(
 
 if __name__ == '__main__':
     # simple driver: iterate combinations (nota: passiamo presolve correttamente)
+    # seed used ofr tests = 0,1234567,26,42,262626,424242,878641,5656565
     bests = [
         (14,"CBC","base","feasible",42,True,"","week1",False),
         (14,"CBC","i<j","balanced",878641,True,"","week1",False),

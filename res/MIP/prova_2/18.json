@@ -1,0 +1,20 @@
+{
+  "CBC_preprocessing_feasible_week1_26": {
+    "time": 300,
+    "optimal": false,
+    "obj": null,
+    "sol": []
+  },
+  "CBC_preprocessing_feasible_week1_42": {
+    "time": 300,
+    "optimal": false,
+    "obj": null,
+    "sol": []
+  },
+  "CBC_preprocessing_feasible_week1_666": {
+    "time": 300,
+    "optimal": false,
+    "obj": null,
+    "sol": []
+  }
+}

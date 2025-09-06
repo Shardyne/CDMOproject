@@ -147,6 +147,10 @@ def build_model_with_permutations(n: int,
             vars_involved = [ y[(w,k,per)] for (w,k) in appearance_map[t] ]
             if vars_involved:
                 prob += pulp.lpSum(vars_involved) <= 2, f"period_cap_team{t}_per{per}"
+    # (E) Symmetry breaking: anchor partial week1
+    for k in range(p//3):
+        if k % 2 == 0:
+            prob += y[(1, k, k+1)] == 1, f"fix_week1_identity_k{k}"
 
     # If balanced: link h and y and define home_minus_away[t]
     if objective == "balanced":
@@ -342,14 +346,16 @@ def build_model_with_permutations(n: int,
 
 if __name__ == '__main__':
     # simple driver: iterate combinations (nota: passiamo presolve correttamente)
+    # seed used ofr tests = 0,1234567,26,42,262626,424242,878641,5656565
     bests = [
-        (14,"CBC","balanced",True,42,"random_half"),
-        (16,"CBC","feasible",True,26,"week1"),
-        (12,"GLPK","balanced",True,26,""),
-        (12,"GLPK","feasible",True,26,""),
+        (16, "CBC", "balanced", True, 4242, "random_half"),
+        # (16,"CBC","feasible",True,26,"week1"),
+        # (12,"GLPK","balanced",True,26,""),
+        # (12,"GLPK","feasible",True,26,"")
     ]
     for n,solver, objective, presolve, seed, warm_start in bests:
-                            for nn in range(4, n+1, 2):
+                            # for nn in range(4, n+1, 2):
+                                nn = n
                                 res_dir = os.path.join(os.path.dirname(__file__), "..", "..", "res", "MIP")
                                 os.makedirs(res_dir, exist_ok=True)
                                 out_path = os.path.join(res_dir, f"{nn}.json")
@@ -358,8 +364,9 @@ if __name__ == '__main__':
                                     result, meta = build_model_with_permutations(
                                         n=nn, time_limit=300, seed=seed,
                                               presolve=presolve, warm_start=warm_start,
-                                              objective=objective, solver=solver)
+                                              objective=objective, solver=solver, DEBUG = True)
                                 except Exception as e:
+                                    print(e)
                                     print(f"[ERROR] n={nn} v=preprocessing obj={objective} seed={seed} presolve={presolve}: {e}")
                                     result = {"time":300,"optimal":False,"obj":None,"sol":[]}
                                     meta = {"pulp_status":"error","runtime_sec":0.0}
@@ -368,9 +375,9 @@ if __name__ == '__main__':
 
                                 key = ""
                                 if solver == "CBC":
-                                    key = f"{solver}_preprocessing_{objective}_{warm_start}_{seed}"
+                                    key = f"{solver}_prepro_anchor_{objective}_{warm_start}_{seed}"
                                 else:
-                                    key = f"{solver}_preprocessing_{objective}_dual_{seed}"
+                                    key = f"{solver}_preproc_anchor_{objective}_dual_{seed}"
                                 payload = { key: result }
 
                                 old_data = {}
