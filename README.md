@@ -153,7 +153,7 @@ The following list serves as index to know which version runs a particular model
 | `v5`                  | Will run the channeled model with the optimathsat solver |
 | `v6`                  | Will run the preprocessed model with the optimathsat solver |
 
-* **Single-version mode** 
+  **Single-version mode** 
 * When just `--version` is passed, that version is run with all the even instances from 4 to 18;
 * When just `--n` is passed, that instance is run with all the six versions;
 * When both `--version` and `--n` are passed, then the chosen instance on the chosen version is performed;
