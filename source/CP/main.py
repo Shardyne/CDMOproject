@@ -19,7 +19,7 @@ EXECUTION_CONFIGURATIONS = {
     "v2": {
         "first_model": "constraint_v2_model.mzn",
         "hap_model": "HAP_v1_model.mzn",
-        "solver": "gecode",
+        "solver": "chuffed",
         "round_robin": False
     },
     "v3": {
@@ -29,6 +29,12 @@ EXECUTION_CONFIGURATIONS = {
         "round_robin": False
     },
     "v4": {
+        "first_model": "constraint_v1_model.mzn",
+        "hap_model": None,
+        "solver": "gecode",
+        "round_robin": False
+    },
+    "v5": {
         "first_model": "naive_model.mzn",
         "hap_model": None,
         "solver": "gecode",
@@ -50,9 +56,8 @@ def extract_between(text: str, substring: str) :
         return text[start_index:].strip()
     return text[start_index:end_index].strip()
 
-'''
-returns a 3-dim list where these are the dimensions: [2][periods][weeks]
-'''
+
+# returns a 3-dim list where these are the dimensions: [2][periods][weeks]
 def write_tridimensional_round_robin(n:int):
     periods, weeks = n // 2, n - 1
     calendar = [[[[1] for _ in range(weeks)] for _ in range(periods)] for _ in range(2)]
@@ -138,41 +143,8 @@ def run_minizinc(model, solver, input_data_filename, timeout, version):
         return {f"{solver}":{'sol':[],'time':300,'obj':None,'optimal':False}}
     
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run the solver")
-
-    parser.add_argument(
-        "--version", 
-        default="v1", 
-        help="Version of the model"
-    )
-    parser.add_argument(
-        "--instance", 
-        type=int, 
-        default=6, 
-        help="Instance number (n)"
-    )
-    parser.add_argument(
-        "--time", 
-        type=int, 
-        default=300, 
-        help="Time limit in seconds"
-    )
-    parser.add_argument(
-        "--seed", 
-        help="Not implemented here"
-    )
-    parser.add_argument(
-        "--out", 
-        default=None, 
-        help="Not implemented here"
-    )
-
-    args = parser.parse_args()
-
-    time_limit = args.time * 1000
-    n = args.instance
-    version = args.version
+def execution_cycle(n, version):
+    time_limit = 300_000
     exec_env = EXECUTION_CONFIGURATIONS[version]
     round_robin = exec_env["round_robin"]
     optional_hap_model = exec_env["hap_model"]
@@ -219,3 +191,39 @@ if __name__ == "__main__":
         output_path.write_text(json.dumps(existing_data))
 
     print(f"\n[OK] - Results written to {output_path}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run the solver")
+
+    parser.add_argument(
+        "--version", 
+        default="None", 
+        help="Version of the model"
+    )
+    parser.add_argument(
+        "--instance", 
+        type=int, 
+        default=0, 
+        help="Instance number (n)"
+    )
+    
+    args = parser.parse_args()
+
+    n = args.instance
+    version = args.version
+
+    if n == 0 and version == "None":
+        N_LISTS = [(6,8,10,12,14,16),
+                   (6,8,10,12,14),
+                   (6,8,10,12),
+                   (6,8,10,12),
+                   (6,8,10)]
+        
+        for version_key, instance_n_list in zip(EXECUTION_CONFIGURATIONS, N_LISTS):
+            for instance_n in instance_n_list:
+                execution_cycle(instance_n, version_key)
+
+    else:
+        execution_cycle(n, version)
+    
