@@ -1,6 +1,7 @@
 import json, time, subprocess, re
 from z3 import *
 from collections import defaultdict
+import shutil
 
 def build_solution_table(opp, hom, per, N, W, P):
     """
@@ -215,15 +216,14 @@ def run_solver(smt_path, solver, timeout_s):
     if "z3" in solver_name:
         cmd = [
     solver, "-smt2", smt_path,
-    "smt.random_seed=0",
     "smt.phase_selection=4",   # Disable flattening that can vary
 ]
+    
     elif "cvc5" in solver_name:
         cmd = [
-            solver, "--lang=smt2", smt_path,  # Internal timeout (milliseconds)
-            "--seed=0",                          # Deterministic behavior
-            "--decision=internal",                # Consistent decision heuristic
-            "--produce-models"                    # Ensure model generation
+            solver, "--lang=smt2", smt_path,
+            "--decision=internal",
+            "--produce-models"
         ]
     elif 'opti' in solver_name:
         cmd=['optimathsat', smt_path]

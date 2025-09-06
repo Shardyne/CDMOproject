@@ -7,7 +7,7 @@ ENV MKL_NUM_THREADS=1
 ENV OPENBLAS_NUM_THREADS=1
 ENV DEBIAN_FRONTEND=noninteractive
 
-WORKDIR /app
+WORKDIR /CDMO
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -25,45 +25,82 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install PuLP and numpy
 RUN pip install --no-cache-dir pulp numpy z3-solver
 
+# Install cvc5 - download binary from release page
+# Install cvc5 - choose binary matching container architecture, fallback if needed
 ARG CVC5_VER=1.2.0
-ARG CVC5_FLAVOR=Linux-arm64-shared-gpl   # no extra cvc5- prefix
 
+ARG CVC5_VER=1.2.0
 RUN set -eux; \
-  wget -O /tmp/cvc5.zip \
-    https://github.com/cvc5/cvc5/releases/download/cvc5-${CVC5_VER}/cvc5-${CVC5_FLAVOR}.zip; \
-  mkdir -p /opt/cvc5; \
-  unzip /tmp/cvc5.zip -d /opt/cvc5; \
-  rm /tmp/cvc5.zip; \
-  ln -sf "$(find /opt/cvc5 -type f -name cvc5 -perm -111 | head -n1)" /usr/local/bin/cvc5; \
-  cvc5 --version
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates file wget unzip; \
+    rm -rf /var/lib/apt/lists/*; \
+    mkdir -p /opt/cvc5; \
+    ARCH="$(uname -m)"; \
+    echo "[cvc5] detected uname -m = ${ARCH}"; \
+    if [ "${ARCH}" = "aarch64" ] || [ "${ARCH}" = "arm64" ]; then \
+      PRIMARY_FLAVOR="Linux-arm64-shared-gpl"; SECONDARY_FLAVOR="Linux-x86_64-shared-gpl"; \
+    else \
+      PRIMARY_FLAVOR="Linux-x86_64-shared-gpl"; SECONDARY_FLAVOR="Linux-arm64-shared-gpl"; \
+    fi; \
+    echo "[cvc5] primary=${PRIMARY_FLAVOR}, fallback=${SECONDARY_FLAVOR}"; \
+    cd /tmp; \
+    set -o pipefail; \
+    ( wget -q -O cvc5_primary.zip "https://github.com/cvc5/cvc5/releases/download/cvc5-${CVC5_VER}/cvc5-${PRIMARY_FLAVOR}.zip" && unzip -q cvc5_primary.zip -d /opt/cvc5 ) \
+      || ( echo "[cvc5] primary failed, trying fallback"; wget -q -O cvc5_fallback.zip "https://github.com/cvc5/cvc5/releases/download/cvc5-${CVC5_VER}/cvc5-${SECONDARY_FLAVOR}.zip" && unzip -q cvc5_fallback.zip -d /opt/cvc5 ); \
+    rm -f /tmp/cvc5_primary.zip /tmp/cvc5_fallback.zip; \
+    BIN_PATH="$(find /opt/cvc5 -type f -name cvc5 -perm /111 | head -n1)"; \
+    if [ -n "$BIN_PATH" ]; then \
+      chmod +x "$BIN_PATH"; \
+      ln -sf "$(realpath "$BIN_PATH")" /usr/local/bin/cvc5; \
+      echo "[cvc5] installed binary at: $BIN_PATH"; \
+      file_out="$(file "$BIN_PATH" 2>/dev/null || true)"; \
+      echo "[cvc5] file output: $file_out"; \
+      case "$file_out" in \
+        *"x86-64"*) echo "[cvc5] binary is x86-64 -> trying cvc5 --version"; cvc5 --version || true ;; \
+        *"ARM aarch64"*) echo "[cvc5] binary is aarch64 -> trying cvc5 --version"; cvc5 --version || true ;; \
+        *) echo "[cvc5] binary arch unknown, skipping runtime check" ;; \
+      esac; \
+    else \
+      echo "[cvc5] no cvc5 binary found under /opt/cvc5"; \
+      exit 1; \
+    fi
 
-# # Install MiniZinc binary bundle
-# RUN wget -O /tmp/minizinc.tgz https://github.com/MiniZinc/libminizinc/releases/latest/download/minizinc-bundle-linux-x86_64.tgz \
-#     && tar xzf /tmp/minizinc.tgz -C /opt/minizinc \
-#     && ln -s /opt/minizinc/bin/minizinc /usr/local/bin/minizinc
-
-# Add this to your existing Dockerfile
-RUN apt-get update && apt-get install -y \
-    wget \
-    unzip \
-    && rm -rf /var/lib/apt/lists/*
-
-# Download and install OptiMathSAT
 RUN wget https://optimathsat.disi.unitn.it/releases/optimathsat-1.7.3/optimathsat-1.7.3-linux-64-bit.tar.gz \
     && tar -xzf optimathsat-1.7.3-linux-64-bit.tar.gz \
     && mv optimathsat-1.7.3-linux-64-bit /opt/optimathsat \
     && ln -s /opt/optimathsat/bin/optimathsat /usr/local/bin/optimathsat \
     && rm optimathsat-1.7.3-linux-64-bit.tar.gz
 
-# Verify installation
-RUN optimathsat -version
+# Install MiniZinc (available only x86_64 bundle)
+#RUN set -eux; \
+#    apt-get update && apt-get install -y --no-install-recommends wget tar ca-certificates; \
+#    rm -rf /var/lib/apt/lists/*; \
+#    cd /tmp; \
+#    MINIZINC_VER=2.9.3; \
+#    wget -q "https://github.com/MiniZinc/MiniZincIDE/releases/download/${MINIZINC_VER}/MiniZincIDE-${MINIZINC_VER}-bundle-linux-x86_64.tgz"; \
+#    tar -xzf "MiniZincIDE-${MINIZINC_VER}-bundle-linux-x86_64.tgz"; \
+#    MINIZINC_DIR="/tmp/MiniZincIDE-${MINIZINC_VER}-bundle-linux-x86_64/bin"; \
+#    chmod +x "$MINIZINC_DIR/minizinc"; \
+#    ln -sf "$MINIZINC_DIR/minizinc" /usr/local/bin/minizinc; \
+#    rm -f "MiniZincIDE-${MINIZINC_VER}-bundle-linux-x86_64.tgz"; \
+#    echo "[minizinc] installed version:"; minizinc --version
+    
+# Copy project files
+COPY . /CDMO
 
-# Copy project code
-COPY . /app
+# Volume for code and results
+VOLUME ["/CDMO/res"]
+VOLUME ["/CDMO/source"]
 
-# RUN chmod +x /app/run_all.sh /app/run_instance.sh
+# PRODUCTION script
+# Copy entrypoint and make it executable 
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# Entrypoint decides behavior based on args passed to docker run
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+# Default command: none
+CMD []
 
-CMD ["python", "SMT/python_files/parsers/pars.py", "--help"]
-#CMD ["bash"]
 
-
+# DEVELOPMENT script
+# CMD ["tail", "-f", "/dev/null"]

@@ -7,11 +7,10 @@ def main():
     # define the arguments of the parser
     ap = argparse.ArgumentParser(description="Parse SMT2 model and update res/SMT/{N}.json")
     ap.add_argument("--solver", default="z3", choices=["z3", "cvc5", 'opti'], help="Solver binary")
-    
-    ap.add_argument("--approach", choices=["channeled", "offline"], help="approach to use")
+    ap.add_argument("--approach", choices=["channeled", "preprocess"], help="approach to use")
     ap.add_argument("--timeout", type=int, default=300, help="Timeout seconds")
     ap.add_argument("--N", type=int, required=False, help="Teams (even). If omitted, inferred.")
-    ap.add_argument("--outdir", default="res/SMT1", help="Output directory")
+    ap.add_argument("--outdir", default="res/SMT", help="Output directory")
     args = ap.parse_args()
 
     # variable and name which will be used later and for the name
@@ -28,7 +27,7 @@ def main():
         
 
         with tempfile.NamedTemporaryFile("w", suffix=".smt2", delete=False) as f:
-            f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n")
+            f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n(set-option :random-seed 42)\n")
             f.write(smt)
             f.write("(get-model)\n")
             f.flush()
@@ -66,7 +65,7 @@ def main():
             smt = s.to_smt2()
 
             with tempfile.NamedTemporaryFile("w", suffix=".smt2", delete=False) as f:
-                f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n")
+                f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n(set-option :random-seed 42)\n")
                 f.write(smt)
                 f.write("(get-model)\n")
                 f.flush()
@@ -76,10 +75,6 @@ def main():
 
                 os.remove(f.name)
             total_time += elapsed2
-
-            
-            
-
             assigns = parse_model(stdout)
             if not assigns:
                 status=get_status(stdout)
@@ -91,15 +86,15 @@ def main():
             print(counts)
 
 
-    elif args.approach == 'offline':
+    elif args.approach == 'preprocess':
         start3=time.time()
-        s, Home, Per, matches = offline_approach_domains(N)
-        s = symmetry_breaking_constraints_offline(N, s, Home, Per, matches)
+        s, Home, Per, matches = preprocess_approach_domains(N)
+        s = symmetry_breaking_constraints_preprocess(N, s, Home, Per, matches)
         smt = s.to_smt2()
         
 
         with tempfile.NamedTemporaryFile("w", suffix=".smt2", delete=False) as f:
-            f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n")
+            f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n(set-option :random-seed 42)\n")
             f.write(smt)
             f.write("(get-model)\n")
             f.flush()
@@ -132,14 +127,14 @@ def main():
         while solved != 0 and not (status=='timeout' or status in ('unknown', 'unsat') ):
             sol1, sol2 = stdout, stderr
             start4=time.time()
-            s, Home, Per, matches = offline_approach_domains(N)
+            s, Home, Per, matches = preprocess_approach_domains(N)
             s, Home = smt_obj_manual(N, Home, obj, counts, s)
-            s = symmetry_breaking_constraints_offline(N, s, Home, Per, matches)
+            s = symmetry_breaking_constraints_preprocess(N, s, Home, Per, matches)
             smt = s.to_smt2()
            
 
             with tempfile.NamedTemporaryFile("w", suffix=".smt2", delete=False) as f:
-                f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)")
+                f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n(set-option :random-seed 42)\n")
                 f.write(smt)
                 f.write("(get-model)\n")
                 f.flush() 

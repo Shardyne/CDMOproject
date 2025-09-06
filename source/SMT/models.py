@@ -98,7 +98,7 @@ def circle_method_pairs(n):
 
     return schedule
 
-def offline_approach_domains(N):
+def preprocess_approach_domains(N):
     assert N % 2 == 0 and N >= 4
     W, P = N - 1, N // 2
 
@@ -151,7 +151,7 @@ def offline_approach_domains(N):
     return solver, Home, Per, matches
 
 
-def symmetry_breaking_constraints_offline(N, solver, Home, Per, matches):
+def symmetry_breaking_constraints_preprocess(N, solver, Home, Per, matches):
     
     # Break global home/away flip
     solver.add(Home[0][0])
