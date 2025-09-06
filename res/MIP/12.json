@@ -283,7 +283,7 @@
     ]
   },
   "CBC_i<j_balanced_week1__878641": {
-    "time": 39,
+    "time": 37,
     "optimal": true,
     "obj": 0.0,
     "sol": [
@@ -566,7 +566,7 @@
     ]
   },
   "GLPK_base_feasible_dual_B_26": {
-    "time": 18,
+    "time": 16,
     "optimal": true,
     "obj": null,
     "sol": [
@@ -849,7 +849,7 @@
     ]
   },
   "CBC_prepro_anchor_balanced_random_half_424242": {
-    "time": 3,
+    "time": 2,
     "optimal": true,
     "obj": 0,
     "sol": [
@@ -1132,7 +1132,7 @@
     ]
   },
   "CBC_prepro_anchor_feasible_week1_262626": {
-    "time": 2,
+    "time": 1,
     "optimal": true,
     "obj": null,
     "sol": [
@@ -1415,7 +1415,7 @@
     ]
   },
   "GLPK_preproc_anchor_balanced_dual_26": {
-    "time": 32,
+    "time": 30,
     "optimal": true,
     "obj": 0,
     "sol": [

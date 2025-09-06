@@ -143,13 +143,15 @@ The following list serves as index to know which version runs a particular model
 
 ## MIP: available versions and which token to call
 
-The MIP folder contains several behaviors. Choose the token below when you run the container.
+| version token to pass | meaning / which implementation is used                                                                                                                                                    |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `v1`                  | the best CBC and GLPK **base** — **feasible** model                                                       |
+| `v2`                  | Useful to verify the behaviour of CBC `i!=j` and compare it to `v1`/`v3`.         |
+| `v3`                  | the best CBC and GLPK **i\<j**-**balanced**.              |
+| `v4`                  | the best CBC and GLPK **pre** - **feasible/balanced**.                                                                             |
+| `v5`                  | **seed-sensitivity sweep** — runs the same CBC base-feasible case over many seeds (0, 1234567, 26, 42, 262626, 424242, 878641, 5656565). Usefull to see how changing seed, changes the the performance of the same model.          |
+| `v6`                  | **GLPK robustness & cuts** — multiple GLPK combos (seeds, cuts on/off, base vs i\<j) usefull to check the performance of GLPK |
 
-| version token to pass | meaning / which implementation is used                                                                                                                                           |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `v1`                  | **base** behavior — run the `base` experiments from `v_1_2_3.py`. Use `--version v1`.                                                                                            |
-| `v3`                  | **i\<j** variant — the experiments that use the ordering `i<j` (symmetry handling). Implemented in `v_1_2_3.py` (same file but with `version='i<j'` passed). Use `--version v3`. |
-| `v4`                  | **pre** / preprocessing variant — calls `v_4.py` (`build_model_with_permutations`). Use `--version v4`.                                                                          |
 #### Where results are written
 
 * **Batch mode (no args)**: the MIP batch writes files into:
