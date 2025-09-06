@@ -124,6 +124,21 @@ Then you can run commands manually inside the container, e.g.:
 ```bash
 python /CDMO/source/MIP/main.py --instance 8 --version v1
 ```
+
+---
+
+## CP: available versions
+
+The following list serves as index to know which version runs a particular model (all the cited model are described in the report).
+
+| version  | meaning / which implementation is used                                                                                                                                           |
+| --------------------- | ---------------------------------------------------------------------------------- |
+| `v1`                  | Will run the round_robin_model with HAP_v1_model optimization, with 'chuffed' solver |
+| `v2`                  | Will run the constraint_v2_model with HAP_v1_model optimization, with 'chuffed' solver |
+| `v3`                  | Will run the constraint_v2_model non optimized, with 'gecode' solver |
+| `v4`                  | Will run the constraint_v1_model non optimized, with 'gecode' solver |
+| `v5`                  | Will run the naive_model non optimized, with 'gecode' solver |
+
 ---
 
 ## MIP: available versions and which token to call
