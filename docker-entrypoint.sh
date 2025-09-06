@@ -23,7 +23,7 @@ set -euo pipefail
 ###############################################################################
 
 # Allowed approaches (case-insensitive check)
-APPROACHES=(MIP)
+APPROACHES=(MIP CP SMT)
 # CP SMT 
 
 usage() {
