@@ -17,7 +17,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     coinor-cbc \
     glpk-utils \
-    libglpk40 \
+    libglpk40 \    
+    libedit2 \               
+    libtinfo6 \
     libc6 \
     libstdc++6 \
     && rm -rf /var/lib/apt/lists/*

@@ -1,8 +1,0 @@
-{
-  "GLPK_base_feasible_cuts": {
-    "time": 300,
-    "optimal": false,
-    "obj": null,
-    "sol": []
-  }
-}

@@ -1,8 +1,0 @@
-{
-  "GLPK_i<j_balanced_dual_clique": {
-    "time": 300,
-    "optimal": false,
-    "obj": 0.0,
-    "sol": []
-  }
-}

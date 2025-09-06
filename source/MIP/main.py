@@ -76,8 +76,8 @@ V123_BESTS = [
 
 V4_BESTS = [
     # (n_max, solver, objective, presolve, seed, warm_start)
-    (16, "CBC", "balanced", True, 42, "random_half"),
-    (16, "CBC", "feasible", True, 26, "week1"),
+    (16, "CBC", "balanced", True, 424242, "random_half"),
+    (16, "CBC", "feasible", True, 262626, "week1"),
     (12, "GLPK","balanced", True, 26, ""),
     (14, "GLPK","feasible", True, 26, ""),
 ]

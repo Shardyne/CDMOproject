@@ -17,9 +17,9 @@ def main():
     # if both arguments are none then run all the possible versions with all the feasible instances
     if args.version is None and args.n is None:
         print("[INFO] No version specified and instances -> running batch for all possible versions from v1 to v6 with all possible instances")
-        for solver in ['z3', 'cvc5', 'opti']:
+        for solver in ['cvc5', 'opti','z3']:
             for app in ['channeled','preprocess']:
-                for n_i in range(4,23,2):
+                for n_i in range(4,21,2):
                     print(f'running solver:{solver} on approach {app} with N={n_i}')
                     subprocess.run(['python', 'source/SMT/parser.py', '--solver', solver, '--approach', app, '--N', str(n_i)], text=True)
 
@@ -28,7 +28,7 @@ def main():
     elif args.version is None and args.n is not None:
         n=args.n
         print(f"[INFO] No version specified -> running batch for all possible versions from v1 to v6 with the given instance {n}")
-        for solver in ['z3', 'cvc5', 'opti']:
+        for solver in [ 'cvc5', 'opti', 'z3']:
             for app in ['channeled','preprocess']:
                     print(f'running solver:{solver} on approach {app} with N={n}')
                     subprocess.run(['python', 'source/SMT/parser.py', '--solver', solver, '--approach', app, '--N', str(n)], text=True)
@@ -53,7 +53,7 @@ def main():
         # if the instance is not set then run the chosen version on all the possible instances
         if args.n is None:
             print(f"[INFO] No instance specified -> running {args.version} with all the possible instances")
-            for n in range(4,23,2):
+            for n in range(4,21,2):
                 print(f'running solver:{solv} on approach {mod} with N={n}')
                 subprocess.run(['python', 'source/SMT/parser.py', '--solver', solv, '--approach', mod, '--N', str(n)], text=True)
         
