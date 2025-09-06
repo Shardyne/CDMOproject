@@ -81,7 +81,7 @@ def circle_method_pairs(n):
 
 def balanced_circle_method_pairs(n, half:bool = False, seed: int = 0):
     assert n % 2 == 0 and n >= 4
-    random.seed(seed)
+    rn = random.seed(seed)
     w, p = n - 1, n // 2
     fixed = 1
     others = list(range(2, n+1))
@@ -96,7 +96,7 @@ def balanced_circle_method_pairs(n, half:bool = False, seed: int = 0):
                 else:
                     pairs.append((arr[id_p], arr[-1 - id_p]))
             else:
-                if random.choice([True, False]):
+                if rn.choice([True, False]):
                     if (wk + id_p) % 2 == 0:
                         pairs.append((arr[-1 - id_p], arr[id_p]))
                     else:
@@ -124,7 +124,6 @@ def build_model(
       D = canonical ordering of periods by signature
     """
 
-    random.seed(seed)
     assert n % 2 == 0 and n >= 2
     W = list(range(1, n))                  # weeks: 1..n-1
     P = list(range(1, n//2 + 1))           # periods: 1..n/2

@@ -86,7 +86,7 @@ def build_model_with_permutations(n: int,
     """
     assert n % 2 == 0 and n >= 4
     start_total = time.time()
-    random.seed(seed)
+    rn = random.seed(seed)
 
     W = list(range(1, n))          # weeks
     P = list(range(1, n//2 + 1))   # periods
@@ -202,7 +202,7 @@ def build_model_with_permutations(n: int,
         initial_map = {}
         for w in W:
             perm = P[:]
-            random.shuffle(perm)
+            rn.shuffle(perm)
             for k in range(p):
                 initial_map[(w,k)] = perm[k]
 
@@ -214,7 +214,7 @@ def build_model_with_permutations(n: int,
         # Decide which slots to set
         slots = list(initial_map.keys())
         if ws == "random_half":
-            slots = random.sample(slots, len(slots)//2)
+            slots = rn.sample(slots, len(slots)//2)
 
         # initialize all y to 0 to have consistent MIPStart
         for var in y.values():
