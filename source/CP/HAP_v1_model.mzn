@@ -37,7 +37,7 @@ solve minimize objective_function;
 % --- Output
 output [
   "{",
-  "\"optimal\":true,",
+  "\"optimal\":" ++ show(objective_function == 1) ++ ",",
   "\"obj\":" ++ show(objective_function) ++ ",",
   "\"sol\":[",
     join(",",
