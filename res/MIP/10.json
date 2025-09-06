@@ -394,7 +394,7 @@
     ]
   },
   "GLPK_base_feasible_dual_B_26": {
-    "time": 6,
+    "time": 5,
     "optimal": true,
     "obj": null,
     "sol": [

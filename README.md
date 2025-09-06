@@ -141,7 +141,11 @@ The following list serves as index to know which version runs a particular model
 
 ---
 
-## MIP: available versions and which token to call
+## SMT: available versions
+
+---
+
+## MIP: available versions 
 
 | version token to pass | meaning / which implementation is used                                                                                                                                                    |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

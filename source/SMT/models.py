@@ -4,7 +4,7 @@ def channeled_model_no_check(N):
     W = N - 1
     P = N // 2
 
-    # Define   variables
+    # Define  variables
     Per = [[Int(f"Per_{t}_{w}") for w in range(W)] for t in range(N)]
     Home = [[Bool(f"Home_{t}_{w}") for w in range(W)] for t in range(N)]
     Opp = [[Int(f"Opp_{t}_{w}") for w in range(W)] for t in range(N)]
@@ -53,14 +53,13 @@ def symmetry_breaking_constraints(N, solver, Home, Per, Opp):
     # Break the flip of the opponents
     solver.add(Opp[0][0] == N)
     
-    # Canonicalize week 0 layout: pairsolver (0,N-1), (1,N-2), ..., (P-1,P)
-    # by pinning the period choice of thosolvere teamsolver in week 0
+    # Fix week 0 layout period
     for p in range(1, P+1):
         a, b = p, N + 1 - p
         solver.add(Per[a-1][0] == p)
         solver.add(Per[b-1][0] == p)
     
-    # break period solverymmetry by fixing decreasolvering periodsolver for all weeksolver 
+    # fix team 1 opponents in decreasing order
     for w in range(W-1):
         solver.add(Opp[0][w] > Opp[0][w+1])
 
@@ -73,17 +72,18 @@ def smt_obj_manual(N, Home, obj, counts, solver):
     # count the number of home games
     count_home = [Sum([If(Home[t][w], 1, 0) for w in range(W)]) for t in range(N)]
     for t in range(N):
-        # implied constraint to go with direct the search
+        # implied constraint to make the home games converge faster
         solver.add(count_home[t]<=max(counts))
         solver.add(count_home[t]>=min(counts))
     
+    # Upper bound and lower bound are imposed on the objective function
     solver.add(Sum([Abs(2*count_home[t] - W) for t in range(N)]) <obj)
     solver.add(Sum([Abs(2*count_home[t] - W) for t in range(N)]) >=N)
 
-    # return the solver for the sy
+    # return the solver and Home
     return solver, Home
 
-# create the matches for the warm start
+# create the matches for the preprocessing
 def circle_method_pairs(n):
     assert n % 2 == 0 and n >= 4
     w, p = n - 1, n // 2
@@ -102,7 +102,7 @@ def preprocess_approach_domains(N):
     assert N % 2 == 0 and N >= 4
     W, P = N - 1, N // 2
 
-    # create the fixed pairings
+    # use the circle method to define the thing
     matches = circle_method_pairs(N) 
 
     # Variables
@@ -110,30 +110,29 @@ def preprocess_approach_domains(N):
     Home = [[Bool(f"Home_{t}_{w}") for w in range(W)] for t in range(N)]
     solver = Solver()
 
-    # ---------- Domains ----------
+    # Domains
     for t in range(N):
         for w in range(W):
             solver.add(And(1 <= Per[t][w], Per[t][w] <= P))
         
-    
-    # ---------- Build opponent map from fixed pairings ----------
-    # opp[w][t] = opponent (1..N) of team (t+1) in week (w+1)
+    # build opponents from circle method
     opp = [[None]*N for _ in range(W)]
     for w in range(W):
         for (u, v) in matches[w]:
             opp[w][u-1] = v
             opp[w][v-1] = u
 
-    # Each team shares its period with its designated opponent (and with nobody else).
+    # Two teams playing against each other have the same period and
+    # two teams not playing against each other have different periods
     for w in range(W):
         for t in range(N):
             o = opp[w][t] - 1 
-            solver.add(Per[t][w] == Per[o][w])  # same period as opponent
+            solver.add(Per[t][w] == Per[o][w])
             for u in range(N):
                 if u != t and u != o:
-                    solver.add(Per[t][w] != Per[u][w])  # no other team shares their period 
+                    solver.add(Per[t][w] != Per[u][w]) 
 
-    # Implied constraint
+    # Implied constraint taken from the other model
     for w in range(W):
         for p in range(1,P+1):
             solver.add(Sum([If(Per[t][w] == p, 1, 0) for t in range(N)]) == 2)
@@ -146,7 +145,7 @@ def preprocess_approach_domains(N):
     # One of the two teams is home or away 
     for w in range(W):
         for (u,v) in matches[w]:
-            solver.add(Xor(Home[u-1][w], Home[v-1][w]))  # exactly one is True
+            solver.add(Xor(Home[u-1][w], Home[v-1][w])) 
 
     return solver, Home, Per, matches
 
@@ -156,8 +155,7 @@ def symmetry_breaking_constraints_preprocess(N, solver, Home, Per, matches):
     # Break global home/away flip
     solver.add(Home[0][0])
     
-    # Canonicalize week 0 layout: pairsolver (0,N-1), (1,N-2), ..., (P-1,P)
-    # by pinning the period choice of thosolvere teamsolver in week 0
+    # Fix week 0 layout period
     for i, (u, v) in enumerate(matches[0], start=1):
         solver.add(Per[u-1][0] == i)
         solver.add(Per[v-1][0] == i)

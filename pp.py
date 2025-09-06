@@ -39,7 +39,7 @@ def collect_results(json_dir: str, output_csv: str = "summary.csv"):
 
     # Salvo su CSV
     df.to_csv(output_csv)
-    print(f"✅ Risultati salvati in {output_csv}")
+    print(f"Risultati salvati in {output_csv}")
     return df
 
 
