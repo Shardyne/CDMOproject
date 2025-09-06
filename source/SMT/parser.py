@@ -27,7 +27,8 @@ def main():
         
 
         with tempfile.NamedTemporaryFile("w", suffix=".smt2", delete=False) as f:
-            f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n(set-option :random-seed 42)\n")
+            f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n(set-option :random-seed 0)\n")
+            f.write("(set-option :dpll.branching_cache_phase 2)\n(set-option :dpll.branching_initial_phase 2)\n(set-option :dpll.branching_random_frequency 0.0)\n")
             f.write(smt)
             f.write("(get-model)\n")
             f.flush()
@@ -65,7 +66,8 @@ def main():
             smt = s.to_smt2()
 
             with tempfile.NamedTemporaryFile("w", suffix=".smt2", delete=False) as f:
-                f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n(set-option :random-seed 42)\n")
+                f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n(set-option :random-seed 0)")
+                f.write("(set-option :dpll.branching_cache_phase 2)\n(set-option :dpll.branching_initial_phase 2)\n(set-option :dpll.branching_random_frequency 0.0)\n")
                 f.write(smt)
                 f.write("(get-model)\n")
                 f.flush()
@@ -94,7 +96,8 @@ def main():
         
 
         with tempfile.NamedTemporaryFile("w", suffix=".smt2", delete=False) as f:
-            f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n(set-option :random-seed 42)\n")
+            f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n(set-option :random-seed 0)\n")
+            f.write("(set-option :dpll.branching_cache_phase 2)\n(set-option :dpll.branching_initial_phase 2)\n(set-option :dpll.branching_random_frequency 0.0)\n")
             f.write(smt)
             f.write("(get-model)\n")
             f.flush()
@@ -134,7 +137,8 @@ def main():
            
 
             with tempfile.NamedTemporaryFile("w", suffix=".smt2", delete=False) as f:
-                f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n(set-option :random-seed 42)\n")
+                f.write("(set-logic QF_LIA)\n(set-option :produce-models true)\n(set-option :timeout 300000)\n(set-option :random-seed 0)\n")
+                f.write("(set-option :dpll.branching_cache_phase 2)\n(set-option :dpll.branching_initial_phase 2)\n(set-option :dpll.branching_random_frequency 0.0)\n")
                 f.write(smt)
                 f.write("(get-model)\n")
                 f.flush() 

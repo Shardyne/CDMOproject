@@ -28,8 +28,6 @@ RUN pip install --no-cache-dir pulp numpy z3-solver
 # Install cvc5 - download binary from release page
 # Install cvc5 - choose binary matching container architecture, fallback if needed
 ARG CVC5_VER=1.2.0
-
-ARG CVC5_VER=1.2.0
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends ca-certificates file wget unzip; \

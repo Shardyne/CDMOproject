@@ -216,14 +216,16 @@ def run_solver(smt_path, solver, timeout_s):
     if "z3" in solver_name:
         cmd = [
     solver, "-smt2", smt_path,
-    "smt.phase_selection=4",   # Disable flattening that can vary
+    "smt.phase_selection=4",
+       'smt.random_seed=0'  # Disable flattening that can vary
 ]
     
     elif "cvc5" in solver_name:
         cmd = [
             solver, "--lang=smt2", smt_path,
             "--decision=internal",
-            "--produce-models"
+            "--produce-models",
+            '--random-seed=0'
         ]
     elif 'opti' in solver_name:
         cmd=['optimathsat', smt_path]
