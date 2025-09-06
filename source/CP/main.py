@@ -96,6 +96,7 @@ def write_triangular(n: int):
 
 def run_minizinc(model, solver, input_data_filename, timeout, version):
     raw_output = None
+    solver_type_key = f"{solver}_{version}"
     try:
         # Run minizinc and capture stdout
         result = subprocess.run(
@@ -115,7 +116,6 @@ def run_minizinc(model, solver, input_data_filename, timeout, version):
         )
 
         # If output is JSON, parse it
-        solver_type_key = f"{solver}_{version}"
         raw_output = result.stdout
         solution_time_elapsed = int(float(extract_between(raw_output, "solveTime=")))
         solution_content = "{" + extract_between(raw_output, "{")
