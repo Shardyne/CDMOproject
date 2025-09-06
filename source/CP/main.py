@@ -6,8 +6,8 @@ import argparse
 UNKNOWN_SOLUTION_DEFAULT_MESSAGE = "UNKNOWN====="
 UNSATISFIABLE_SOLUTION_DEFAULT_MESSAGE = "UNSATISFIABLE====="
 
-INPUT_DATA_FILENAME = "./_cache_/preprocessed_data" + ".json"
-PARTIAL_OUTPUT_FILENAME = "./_cache_/partial_output" + ".json"
+INPUT_DATA_FILENAME = "source/CP/_cache_/preprocessed_data" + ".json"
+PARTIAL_OUTPUT_FILENAME = "source/CP/_cache_/partial_output" + ".json"
 
 EXECUTION_CONFIGURATIONS = {
     "v1": {
@@ -106,7 +106,7 @@ def run_minizinc(model, solver, input_data_filename, timeout, version):
                 "--solver", solver,
                 "--statistics",
                 "--seed", "1234",
-                model
+                "source/CP/" + model
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -115,6 +115,7 @@ def run_minizinc(model, solver, input_data_filename, timeout, version):
         )
 
         # If output is JSON, parse it
+        solver_type_key = f"{solver}_{version}"
         raw_output = result.stdout
         solution_time_elapsed = int(float(extract_between(raw_output, "solveTime=")))
         solution_content = "{" + extract_between(raw_output, "{")
@@ -122,25 +123,25 @@ def run_minizinc(model, solver, input_data_filename, timeout, version):
         try:
             if unsat_solution_content == UNSATISFIABLE_SOLUTION_DEFAULT_MESSAGE:
                 print("The solution found is UNSATISFIABLE")
-                return {f"{solver}_{version}":{'sol':[],'time':300,'obj':None,'optimal':True}}
+                return {solver_type_key:{'sol':[],'time':300,'obj':None,'optimal':True}}
             elif unsat_solution_content == UNKNOWN_SOLUTION_DEFAULT_MESSAGE:
                 print("The solution HASN'T been found (UNKNOWN)")
-                return {f"{solver}_{version}":{'sol':[],'time':300,'obj':None,'optimal':False}}
+                return {solver_type_key:{'sol':[],'time':300,'obj':None,'optimal':False}}
             json_solution = json.loads(solution_content)
             json_solution["time"] = solution_time_elapsed
-            return {f"{solver}_{version}":json_solution}
+            return {solver_type_key:json_solution}
         except json.JSONDecodeError:
             print("[WARN] - Output is not valid JSON, returning raw text")
             return "ERROR JSON PARSE"
 
     except subprocess.CalledProcessError as e:
         print(f"[ERROR] - MiniZinc execution failed:\n{e.stderr}")
-        return {f"{solver}":{'sol':[],'time':300,'obj':None,'optimal':False}}
+        return {solver_type_key:{'sol':[],'time':300,'obj':None,'optimal':False}}
     except Exception as e:
         print(e)
         if raw_output:
             print("\n RAW OUTPUT:", raw_output)
-        return {f"{solver}":{'sol':[],'time':300,'obj':None,'optimal':False}}
+        return {solver_type_key:{'sol':[],'time':300,'obj':None,'optimal':False}}
     
 
 def execution_cycle(n, version):
@@ -150,7 +151,7 @@ def execution_cycle(n, version):
     optional_hap_model = exec_env["hap_model"]
     solver = exec_env["solver"]
 
-    output_path = Path(f"../../res/CP/{n}.json")
+    output_path = Path(f"/CDMO/res/CP/{n}.json")
     partial_output_path = Path(f"./{PARTIAL_OUTPUT_FILENAME}")
 
     if round_robin:
@@ -163,16 +164,17 @@ def execution_cycle(n, version):
     if result1:
         print("Partial result:", result1)
 
-    partial_result = "{" + f"\"sol\":{result1[f"{solver}_{version}"]['sol']},\n\"n\":{n}" + "}"
-    partial_timer = result1[f"{solver}_{version}"]["time"]
+    solver_type_key = f"{solver}_{version}"
+    partial_result = "{" + f"\"sol\":{result1[solver_type_key]['sol']},\n\"n\":{n}" + "}"
+    partial_timer = result1[solver_type_key]["time"]
 
     # if an HAP optimization model was provided, continue the pipeline
-    if optional_hap_model and len(result1[f"{solver}_{version}"]["sol"]) != 0:
+    if optional_hap_model and len(result1[solver_type_key]["sol"]) != 0:
         partial_output_path.write_text(partial_result)
     
         result2 = run_minizinc(optional_hap_model, solver, PARTIAL_OUTPUT_FILENAME, time_limit-10-(partial_timer*1000), version)
 
-        result2[f"{solver}_{version}"]["time"] = result2[f"{solver}_{version}"]["time"] + partial_timer
+        result2[solver_type_key]["time"] = result2[solver_type_key]["time"] + partial_timer
 
         if output_path.exists():
             existing_data = json.loads(output_path.read_text())
