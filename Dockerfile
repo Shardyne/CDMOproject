@@ -22,6 +22,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libtinfo6 \
     libc6 \
     libstdc++6 \
+    libgl1 \
+    libegl1 \
+    libosmesa6 \
+    libfontconfig1 \
+    libfreetype6 \
+    libx11-6 \
+    libxext6 \
+    libxrender1 \
+    libxcb1 \
+    libxrandr2 \
+    libxi6 \
+    libxfixes3 \
+    libgpg-error0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PuLP and numpy
