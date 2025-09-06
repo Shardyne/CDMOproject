@@ -81,7 +81,7 @@ def circle_method_pairs(n):
 
 def balanced_circle_method_pairs(n, half:bool = False, seed: int = 0):
     assert n % 2 == 0 and n >= 4
-    rn = random.seed(seed)
+    rn = random.Random(seed)
     w, p = n - 1, n // 2
     fixed = 1
     others = list(range(2, n+1))

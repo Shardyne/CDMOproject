@@ -28,15 +28,13 @@ RUN pip install --no-cache-dir pulp numpy z3-solver
 # Install cvc5 - download binary from release page
 # Install cvc5 - choose binary matching container architecture, fallback if needed
 ARG CVC5_VER=1.2.0
-
 RUN set -eux; \
     apt-get update; \
-    apt-get install -y --no-install-recommends ca-certificates file wget unzip || true; \
+    apt-get install -y --no-install-recommends ca-certificates file wget unzip; \
     rm -rf /var/lib/apt/lists/*; \
-    mkdir -p /opt/cvc5 /tmp; \
-    ARCH="$(uname -m || true)"; \
+    mkdir -p /opt/cvc5; \
+    ARCH="$(uname -m)"; \
     echo "[cvc5] detected uname -m = ${ARCH}"; \
-    # decide default flavor from uname -m
     if [ "${ARCH}" = "aarch64" ] || [ "${ARCH}" = "arm64" ]; then \
       PRIMARY_FLAVOR="Linux-arm64-shared-gpl"; SECONDARY_FLAVOR="Linux-x86_64-shared-gpl"; \
     else \
@@ -45,24 +43,24 @@ RUN set -eux; \
     echo "[cvc5] primary=${PRIMARY_FLAVOR}, fallback=${SECONDARY_FLAVOR}"; \
     cd /tmp; \
     set -o pipefail; \
-    # Try primary, fallback to secondary if primary download/unzip fails
     ( wget -q -O cvc5_primary.zip "https://github.com/cvc5/cvc5/releases/download/cvc5-${CVC5_VER}/cvc5-${PRIMARY_FLAVOR}.zip" && unzip -q cvc5_primary.zip -d /opt/cvc5 ) \
       || ( echo "[cvc5] primary failed, trying fallback"; wget -q -O cvc5_fallback.zip "https://github.com/cvc5/cvc5/releases/download/cvc5-${CVC5_VER}/cvc5-${SECONDARY_FLAVOR}.zip" && unzip -q cvc5_fallback.zip -d /opt/cvc5 ); \
-    rm -f /tmp/cvc5_primary.zip /tmp/cvc5_fallback.zip || true; \
-    BIN_PATH="$(find /opt/cvc5 -type f -name cvc5 -perm /111 | head -n1 || true)"; \
-    if [ -n \"$BIN_PATH\" ]; then \
-      ln -sf \"$BIN_PATH\" /usr/local/bin/cvc5 || true; \
-      echo \"[cvc5] installed binary at: $BIN_PATH\"; \
-      # use 'file' to verify binary architecture before running it
-      file_out=\"$(file \"$BIN_PATH\" 2>/dev/null || true)\"; \
-      echo \"[cvc5] file output: $file_out\"; \
-      case \"$file_out\" in \
-        *"x86-64"*) echo \"[cvc5] binary is x86-64 -> trying cvc5 --version\"; cvc5 --version || true ;; \
-        *"ARM aarch64"*) echo \"[cvc5] binary is aarch64 -> trying cvc5 --version\"; cvc5 --version || true ;; \
-        *) echo \"[cvc5] binary arch unknown, skipping runtime check\" ;; \
+    rm -f /tmp/cvc5_primary.zip /tmp/cvc5_fallback.zip; \
+    BIN_PATH="$(find /opt/cvc5 -type f -name cvc5 -perm /111 | head -n1)"; \
+    if [ -n "$BIN_PATH" ]; then \
+      chmod +x "$BIN_PATH"; \
+      ln -sf "$(realpath "$BIN_PATH")" /usr/local/bin/cvc5; \
+      echo "[cvc5] installed binary at: $BIN_PATH"; \
+      file_out="$(file "$BIN_PATH" 2>/dev/null || true)"; \
+      echo "[cvc5] file output: $file_out"; \
+      case "$file_out" in \
+        "x86-64") echo "[cvc5] binary is x86-64 -> trying cvc5 --version"; cvc5 --version || true ;; \
+        "ARM aarch64") echo "[cvc5] binary is aarch64 -> trying cvc5 --version"; cvc5 --version || true ;; \
+        *) echo "[cvc5] binary arch unknown, skipping runtime check" ;; \
       esac; \
     else \
-      echo \"[cvc5] no cvc5 binary found under /opt/cvc5\"; \
+      echo "[cvc5] no cvc5 binary found under /opt/cvc5"; \
+      exit 1; \
     fi
 
 RUN wget https://optimathsat.disi.unitn.it/releases/optimathsat-1.7.3/optimathsat-1.7.3-linux-64-bit.tar.gz \

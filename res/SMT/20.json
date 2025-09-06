@@ -1,8 +1,1 @@
-{
-  "z3_offline_20":{
-    "time":300.0,
-    "optimal":false,
-    "obj":null,
-    "sol":[]
-  }
-}
+{"z3_offline_20": {"time": 300.0, "optimal": false, "obj": null, "sol": []}, "z3_channeled": {"time": 300, "optimal": false, "obj": null, "sol": []}, "z3_preprocess": {"time": 300, "optimal": false, "obj": null, "sol": []}}

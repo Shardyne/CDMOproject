@@ -86,7 +86,7 @@ def build_model_with_permutations(n: int,
     """
     assert n % 2 == 0 and n >= 4
     start_total = time.time()
-    rn = random.seed(seed)
+    rn = random.Random(seed)
 
     W = list(range(1, n))          # weeks
     P = list(range(1, n//2 + 1))   # periods
@@ -348,15 +348,15 @@ if __name__ == '__main__':
     # simple driver: iterate combinations (nota: passiamo presolve correttamente)
     # seed used ofr tests = 0,1234567,26,42,262626,424242,878641,5656565
     bests = [
-        (16, "CBC", "balanced", True, 4242, "random_half"),
-        # (16,"CBC","feasible",True,26,"week1"),
+        (18, "CBC", "balanced", True, 424242, "random_half"),
+        (18,"CBC","feasible",True,262626,"week1"),
         # (12,"GLPK","balanced",True,26,""),
         # (12,"GLPK","feasible",True,26,"")
     ]
     for n,solver, objective, presolve, seed, warm_start in bests:
                             # for nn in range(4, n+1, 2):
                                 nn = n
-                                res_dir = os.path.join(os.path.dirname(__file__), "..", "..", "res", "MIP")
+                                res_dir = os.path.join(os.path.dirname(__file__), "..", "..", "res", "MIP", "ciao_2")
                                 os.makedirs(res_dir, exist_ok=True)
                                 out_path = os.path.join(res_dir, f"{nn}.json")
                                 global_start = time.time()
