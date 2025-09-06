@@ -51,7 +51,7 @@ def main():
         # if the instance is not set then run the chosen version on all the possible instances
         if args.n is None:
             print(f"[INFO] No instance specified -> running {args.version} with all the possible instances")
-            for n in range(4,23,2):
+            for n in range(4,19,2):
                 print(f'running solver:{solv} on approach {mod} with N={n}')
                 subprocess.run(['python', 'source/SMT/parser.py', '--solver', solv, '--approach', mod, '--N', str(n)], text=True)
         
