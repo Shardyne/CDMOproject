@@ -55,7 +55,7 @@ def symmetry_breaking_constraints(N, solver, Home, Per, Opp):
     # Break the flip of the opponents
     solver.add(Opp[0][0] == N)
     
-    # Fix week 0 layout period
+    # Fix week 0 layout period, via an iteration os the circle method
     for p in range(1, P+1):
         a, b = p, N + 1 - p
         solver.add(Per[a-1][0] == p)
