@@ -26,20 +26,22 @@ def channeled_model_no_check(N):
                 solver.add(Implies(Opp[t][w] == k + 1,
                               And(Per[t][w] == Per[k][w], Opp[k][w] == t + 1)))
                 solver.add(Implies(And(Per[t][w] == Per[k][w], Opp[k][w] == t + 1),
-                              Opp[t][w] == k + 1))
-                solver.add(Implies(Opp[t][w] == k + 1, Xor(Home[t][w], Home[k][w])))
+                              Opp[t][w] == k + 1)) 
+                solver.add(Implies(Opp[t][w] == k + 1, Xor(Home[t][w], Home[k][w]))) 
 
     # Main constraints
     for t in range(N):
-        solver.add(Distinct([Opp[t][w] for w in range(W)]))
-    
+        solver.add(Distinct([Opp[t][w] for w in range(W)])) # mimicks an all different constraint
+
     for w in range(W):
         for p in range(1, P+1):
-            solver.add(Sum([If(Per[t][w] == p, 1, 0) for t in range(N)]) == 2)
+            solver.add(Sum([If(Per[t][w] == p, 1, 0) for t in range(N)]) == 2) # counting constraint as it counts
+            #the amount of times two period can be the same in the same week
 
     for t in range(N):
         for p in range(1, P + 1):
-            solver.add(Sum([If(Per[t][w] == p, 1, 0) for w in range(W)]) <= 2)
+            solver.add(Sum([If(Per[t][w] == p, 1, 0) for w in range(W)]) <= 2) # counting constraints as it counts the number of times
+            # a team can have the same period
 
     return solver, Per, Home, Opp
 
@@ -72,11 +74,11 @@ def smt_obj_manual(N, Home, obj, counts, solver):
     # count the number of home games
     count_home = [Sum([If(Home[t][w], 1, 0) for w in range(W)]) for t in range(N)]
     for t in range(N):
-        # implied constraint to make the home games converge faster
-        solver.add(count_home[t]<=max(counts))
+        # implied constraint to make the home games converge faster, domain contraint
+        solver.add(count_home[t]<=max(counts)) 
         solver.add(count_home[t]>=min(counts))
     
-    # Upper bound and lower bound are imposed on the objective function
+    # Upper bound and lower bound are imposed on the objective function, domain constraint
     solver.add(Sum([Abs(2*count_home[t] - W) for t in range(N)]) <obj)
     solver.add(Sum([Abs(2*count_home[t] - W) for t in range(N)]) >=N)
 
@@ -124,6 +126,7 @@ def preprocess_approach_domains(N):
 
     # Two teams playing against each other have the same period and
     # two teams not playing against each other have different periods
+    #channeling constraint
     for w in range(W):
         for t in range(N):
             o = opp[w][t] - 1 
@@ -132,17 +135,17 @@ def preprocess_approach_domains(N):
                 if u != t and u != o:
                     solver.add(Per[t][w] != Per[u][w]) 
 
-    # Implied constraint taken from the other model
+    # Implied constraint taken from the other model, counting
     for w in range(W):
         for p in range(1,P+1):
             solver.add(Sum([If(Per[t][w] == p, 1, 0) for t in range(N)]) == 2)
 
-    # Max 2 games in each period for each team
+    # Max 2 games in each period for each team, counting
     for t in range(N):
         for p in range(1, P+1):                
             solver.add(Sum([If(Per[t][w] == p, 1, 0) for w in range(W)]) <= 2)
 
-    # One of the two teams is home or away 
+    # One of the two teams is home or away, structural
     for w in range(W):
         for (u,v) in matches[w]:
             solver.add(Xor(Home[u-1][w], Home[v-1][w])) 
@@ -155,7 +158,7 @@ def symmetry_breaking_constraints_preprocess(N, solver, Home, Per, matches):
     # Break global home/away flip
     solver.add(Home[0][0])
     
-    # Fix week 0 layout period
+    # Fix week 0 layout period, ordering constraint
     for i, (u, v) in enumerate(matches[0], start=1):
         solver.add(Per[u-1][0] == i)
         solver.add(Per[v-1][0] == i)
